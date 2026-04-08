@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Auto Detail Pro",
+    "slug": "autodetailpro",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "autodetailpro",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#1B4332",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.autodetailpro.app",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "近くのプロを表示するために位置情報を使用します",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "出張中の位置情報共有に使用します"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1B4332"
+      },
+      "package": "com.autodetailpro.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-apple-authentication",
+      "expo-location",
+      "expo-secure-store",
+      "expo-notifications"
+    ]
+  }
+}
