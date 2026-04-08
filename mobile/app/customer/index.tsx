@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
   // FAB
   fab: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 40,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
