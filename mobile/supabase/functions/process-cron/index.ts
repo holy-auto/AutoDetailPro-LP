@@ -281,6 +281,23 @@ Deno.serve(async (req) => {
     results.quality_audit_expiry = { error: (e as Error).message };
   }
 
+  // ========================================
+  // 8. Expire ads past their end date
+  // ========================================
+  try {
+    const now = new Date().toISOString();
+    const { data: expiredAds } = await supabase
+      .from('ads')
+      .update({ status: 'expired' })
+      .eq('status', 'active')
+      .lt('expires_at', now)
+      .select('id');
+
+    results.ad_expiry = { expired: expiredAds?.length ?? 0 };
+  } catch (e) {
+    results.ad_expiry = { error: (e as Error).message };
+  }
+
   return new Response(
     JSON.stringify({ ok: true, timestamp: new Date().toISOString(), results }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

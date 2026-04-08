@@ -58,6 +58,15 @@ export default function AdminLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="ads"
+        options={{
+          title: '広告管理',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="megaphone" size={size} color={color} />
+          ),
+        }}
+      />
       {/* Hidden screens (accessible via router.push, not shown in tab bar) */}
       <Tabs.Screen name="orders" options={{ href: null }} />
       <Tabs.Screen name="payments" options={{ href: null }} />

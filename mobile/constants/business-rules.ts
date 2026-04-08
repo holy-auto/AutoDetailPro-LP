@@ -469,6 +469,51 @@ export const PUSH_NOTIFICATIONS = {
   },
 } as const;
 
+// --- Ads (広告) ---
+export const ADS = {
+  // 広告タイプ
+  TYPES: {
+    PRO_PROMOTION: 'pro_promotion',     // プロの自己宣伝（メニュー・キャンペーン）
+    BANNER: 'banner',                    // 外部広告バナー
+    SPONSORED: 'sponsored',              // スポンサード（カー用品店等）
+    IN_FEED: 'in_feed',                  // フィード内ネイティブ広告
+  },
+  // 掲載プラン（プロ向け自己宣伝）
+  PRO_AD_PLANS: [
+    { id: 'ad_3d', name: '3日間掲載', duration_days: 3, price: 1500, label: 'お試し' },
+    { id: 'ad_7d', name: '1週間掲載', duration_days: 7, price: 2980, label: '人気No.1' },
+    { id: 'ad_30d', name: '1ヶ月掲載', duration_days: 30, price: 9800, label: 'お得' },
+  ],
+  // 表示位置
+  PLACEMENTS: {
+    HOME_TOP: 'home_top',               // ホーム画面上部バナー
+    HOME_FEED: 'home_feed',             // ホームフィード内
+    SEARCH_TOP: 'search_top',           // 検索画面上部
+    ORDER_COMPLETE: 'order_complete',   // 注文完了後
+    PRO_LIST: 'pro_list',               // プロ一覧内
+  },
+  // バナーサイズ
+  BANNER_SIZES: {
+    FULL_WIDTH: { width: 375, height: 100 },
+    HALF_WIDTH: { width: 180, height: 120 },
+    SQUARE: { width: 150, height: 150 },
+  },
+  // 配信設定
+  MAX_ADS_PER_SCREEN: 2,               // 1画面に最大2つ
+  MIN_INTERVAL_BETWEEN_ADS: 3,         // フィードで広告間に最低3アイテム
+  // クリック単価（外部広告）
+  CPC_MIN: 30,                          // ¥30〜
+  CPM_MIN: 300,                         // ¥300/1000表示〜
+  // 審査
+  REVIEW_REQUIRED: true,                // 管理者審査必須
+  MAX_TEXT_LENGTH: 100,                 // 広告テキスト100文字以内
+  MAX_IMAGE_SIZE_MB: 5,
+} as const;
+
+export type AdType = (typeof ADS.TYPES)[keyof typeof ADS.TYPES];
+export type AdPlacement = (typeof ADS.PLACEMENTS)[keyof typeof ADS.PLACEMENTS];
+export type ProAdPlanId = (typeof ADS.PRO_AD_PLANS)[number]['id'];
+
 // --- Scheduled Booking (先日程予約) ---
 export const SCHEDULED_BOOKING = {
   MIN_ADVANCE_HOURS: 2,          // 最低2時間先

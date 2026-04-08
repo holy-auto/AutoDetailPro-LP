@@ -736,7 +736,83 @@ CREATE INDEX idx_work_photos_pro ON work_photos (pro_id) WHERE is_public = TRUE;
 CREATE INDEX idx_work_photos_order ON work_photos (order_id);
 
 -- ============================================
--- 24. Push Notification Tokens (デバイストークン)
+-- 24. Ads (広告)
+-- ============================================
+CREATE TABLE ads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- 広告主
+  advertiser_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  advertiser_type TEXT NOT NULL CHECK (advertiser_type IN ('pro', 'external', 'admin')),
+  -- 広告内容
+  ad_type TEXT NOT NULL CHECK (ad_type IN ('pro_promotion', 'banner', 'sponsored', 'in_feed')),
+  title TEXT NOT NULL,
+  description TEXT,
+  image_url TEXT,
+  link_url TEXT,
+  cta_text TEXT DEFAULT 'もっと見る',
+  -- ターゲティング
+  placement TEXT NOT NULL CHECK (placement IN ('home_top', 'home_feed', 'search_top', 'order_complete', 'pro_list')),
+  target_area TEXT,               -- 地域ターゲティング（例: '東京都', '大阪府'）
+  target_category_id TEXT REFERENCES service_categories(id),
+  -- 掲載プラン（プロ自己宣伝用）
+  plan_id TEXT,
+  -- 課金
+  pricing_model TEXT NOT NULL DEFAULT 'fixed' CHECK (pricing_model IN ('fixed', 'cpc', 'cpm')),
+  price INT NOT NULL DEFAULT 0,
+  budget_limit INT,               -- 予算上限（CPC/CPMの場合）
+  -- 配信期間
+  starts_at TIMESTAMPTZ NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  -- ステータス
+  status TEXT NOT NULL DEFAULT 'pending_review' CHECK (status IN ('pending_review', 'approved', 'rejected', 'active', 'paused', 'expired', 'completed')),
+  rejection_reason TEXT,
+  reviewed_by UUID REFERENCES profiles(id),
+  reviewed_at TIMESTAMPTZ,
+  -- 決済
+  stripe_payment_intent_id TEXT,
+  -- 統計
+  impressions INT DEFAULT 0,
+  clicks INT DEFAULT 0,
+  --
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE ads ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view active ads" ON ads FOR SELECT USING (status = 'active');
+CREATE POLICY "Advertisers can manage own ads" ON ads FOR ALL USING (auth.uid() = advertiser_id);
+CREATE POLICY "Admins can manage all ads" ON ads FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_ads_placement ON ads (placement, status) WHERE status = 'active';
+CREATE INDEX idx_ads_advertiser ON ads (advertiser_id);
+CREATE INDEX idx_ads_expires ON ads (expires_at) WHERE status = 'active';
+
+-- 広告クリック/インプレッション計測
+CREATE TABLE ad_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ad_id UUID NOT NULL REFERENCES ads(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id),
+  event_type TEXT NOT NULL CHECK (event_type IN ('impression', 'click', 'dismiss')),
+  placement TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE ad_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can view all ad events" ON ad_events FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+CREATE POLICY "Advertisers can view own ad events" ON ad_events FOR SELECT USING (
+  EXISTS (SELECT 1 FROM ads WHERE id = ad_id AND advertiser_id = auth.uid())
+);
+-- Insert is allowed for tracking (service role handles this)
+
+CREATE INDEX idx_ad_events_ad ON ad_events (ad_id, event_type);
+CREATE INDEX idx_ad_events_date ON ad_events (created_at);
+
+-- ============================================
+-- 25. Push Notification Tokens (デバイストークン)
 -- ============================================
 CREATE TABLE push_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -858,5 +934,29 @@ BEGIN
   WHERE id IN (
     SELECT DISTINCT pro_id FROM cash_ledger WHERE status = 'overdue'
   );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Increment ad impressions (called via supabase.rpc)
+CREATE OR REPLACE FUNCTION increment_ad_impressions(ad_id_param UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE ads SET impressions = impressions + 1 WHERE id = ad_id_param;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Increment ad clicks
+CREATE OR REPLACE FUNCTION increment_ad_clicks(ad_id_param UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE ads SET clicks = clicks + 1 WHERE id = ad_id_param;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Expire ads past their end date (run daily via pg_cron)
+CREATE OR REPLACE FUNCTION expire_ads()
+RETURNS void AS $$
+BEGIN
+  UPDATE ads SET status = 'expired', updated_at = NOW() WHERE status = 'active' AND expires_at < NOW();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
