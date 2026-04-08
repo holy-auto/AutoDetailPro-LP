@@ -20,6 +20,33 @@ import {
   setProOnlineStatus,
   type Coords,
 } from '@/lib/location';
+import { BUSINESS_HOURS } from '@/constants/business-rules';
+
+/** 現在時刻が営業時間内かどうか */
+function isWithinBusinessHours(): boolean {
+  const now = new Date();
+  // JST offset: UTC+9
+  const jstHour = (now.getUTCHours() + 9) % 24;
+  return jstHour >= BUSINESS_HOURS.OPEN_HOUR && jstHour < BUSINESS_HOURS.CLOSE_HOUR;
+}
+
+/** 営業終了までのミリ秒を返す（営業時間外なら0） */
+function msUntilClose(): number {
+  const now = new Date();
+  const jstMs = now.getTime() + 9 * 60 * 60 * 1000;
+  const jstDate = new Date(jstMs);
+  const closeToday = new Date(jstDate);
+  closeToday.setUTCHours(BUSINESS_HOURS.CLOSE_HOUR, 0, 0, 0);
+  const diff = closeToday.getTime() - jstDate.getTime();
+  return diff > 0 ? diff : 0;
+}
+
+/** 営業時間を "HH:00〜HH:00" 形式で返す */
+function formatBusinessHours(): string {
+  const open = String(BUSINESS_HOURS.OPEN_HOUR).padStart(2, '0');
+  const close = String(BUSINESS_HOURS.CLOSE_HOUR).padStart(2, '0');
+  return `${open}:00〜${close}:00`;
+}
 
 const MOCK_STATS = {
   todayEarnings: 18000,
@@ -54,6 +81,7 @@ export default function ProHome() {
   const [isOnline, setIsOnline] = useState(false);
   const [currentCoords, setCurrentCoords] = useState<Coords | null>(null);
   const watchRef = useRef<{ remove: () => void } | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const proId = user?.id;
 
@@ -62,11 +90,48 @@ export default function ProHome() {
     user?.user_metadata?.name ||
     'プロ';
 
+  /** GPS停止 + オフライン化の共通処理 */
+  const goOffline = useCallback(async () => {
+    watchRef.current?.remove();
+    watchRef.current = null;
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setCurrentCoords(null);
+    setIsOnline(false);
+    if (proId) await setProOnlineStatus(proId, false);
+  }, [proId]);
+
+  /** 営業終了時刻に自動OFFするタイマーをセット */
+  const scheduleAutoOff = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    const remaining = msUntilClose();
+    if (remaining <= 0) return;
+
+    closeTimerRef.current = setTimeout(() => {
+      goOffline();
+      Alert.alert(
+        '営業時間終了',
+        `${formatBusinessHours()} の営業時間が終了したため、自動的にオフラインになりました。`,
+      );
+    }, remaining);
+  }, [goOffline]);
+
   const handleToggleOnline = useCallback(
     async (value: boolean) => {
       if (!proId) return;
 
       if (value) {
+        // 営業時間チェック
+        if (BUSINESS_HOURS.BLOCK_OUTSIDE_HOURS && !isWithinBusinessHours()) {
+          Alert.alert(
+            '営業時間外',
+            `受付可能な時間は ${formatBusinessHours()} です。\n営業時間内にONにしてください。`,
+          );
+          return;
+        }
+
         try {
           const coords = await getCurrentLocation();
           setCurrentCoords(coords);
@@ -79,25 +144,26 @@ export default function ProHome() {
           }, 5000);
 
           setIsOnline(true);
+
+          // 営業終了時に自動OFFタイマー
+          if (BUSINESS_HOURS.AUTO_OFF_AT_CLOSE) {
+            scheduleAutoOff();
+          }
         } catch {
           Alert.alert('位置情報エラー', 'GPSの取得に失敗しました。設定を確認してください。');
         }
       } else {
-        watchRef.current?.remove();
-        watchRef.current = null;
-        setCurrentCoords(null);
-
-        await setProOnlineStatus(proId, false);
-        setIsOnline(false);
+        await goOffline();
       }
     },
-    [proId]
+    [proId, goOffline, scheduleAutoOff]
   );
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       watchRef.current?.remove();
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
       if (proId && isOnline) {
         setProOnlineStatus(proId, false);
       }
@@ -137,7 +203,7 @@ export default function ProHome() {
               <Text style={[styles.gpsSubtitle, isOnline && styles.gpsSubtitleOnline]}>
                 {isOnline
                   ? 'GPS ON — お客さまからの依頼を受付中'
-                  : 'GPSをONにして依頼を受けましょう'}
+                  : `受付時間 ${formatBusinessHours()} — ONにして依頼を受けましょう`}
               </Text>
             </View>
           </View>

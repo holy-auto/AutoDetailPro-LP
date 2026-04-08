@@ -205,6 +205,17 @@ export const CASH_SETTLEMENT = {
   },
 } as const;
 
+// --- Business Hours ---
+export const BUSINESS_HOURS = {
+  OPEN_HOUR: 8,   // 08:00
+  CLOSE_HOUR: 20, // 20:00
+  TIMEZONE: 'Asia/Tokyo',
+  // 営業時間外のトグルONを禁止
+  BLOCK_OUTSIDE_HOURS: true,
+  // 営業終了時に自動OFF
+  AUTO_OFF_AT_CLOSE: true,
+} as const;
+
 // --- Service Categories ---
 export type ServiceCategory = {
   id: string;
