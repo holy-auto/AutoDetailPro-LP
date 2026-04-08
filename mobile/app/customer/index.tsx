@@ -22,49 +22,74 @@ import {
   DEFAULT_LOCATION,
   type Coords,
 } from '@/lib/location';
+import { rankPros, type ProRankData } from '@/lib/ranking';
+import { PRO_BOOST, PRO_RANKING } from '@/constants/business-rules';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MAP_HEIGHT = 280;
 
-// Mock nearby pros with coordinates
-const MOCK_PROS = [
+// Mock nearby pros with ranking data
+const MOCK_PROS_RAW: (ProRankData & {
+  speciality: string;
+  latitude: number;
+  longitude: number;
+})[] = [
   {
     id: '1',
     name: '田中 太郎',
     rating: 4.9,
-    reviews: 127,
-    distance: '0.8km',
-    eta: '5分',
+    reviewCount: 127,
+    distance: 0.8,
+    responseRate: 0.98,
+    completionRate: 0.99,
+    createdAt: '2025-01-15',
+    boostActive: true,
+    boostExpiresAt: '2026-04-20T00:00:00Z',
+    improvementStatus: null,
     speciality: '外装洗車',
     latitude: 35.6842,
     longitude: 139.7645,
-    online: true,
   },
   {
     id: '2',
     name: '佐藤 健一',
     rating: 4.8,
-    reviews: 89,
-    distance: '1.2km',
-    eta: '8分',
+    reviewCount: 89,
+    distance: 1.2,
+    responseRate: 0.95,
+    completionRate: 0.97,
+    createdAt: '2025-06-10',
+    boostActive: false,
+    improvementStatus: null,
     speciality: 'コーティング',
     latitude: 35.6795,
     longitude: 139.7710,
-    online: true,
   },
   {
     id: '3',
     name: '鈴木 美咲',
     rating: 5.0,
-    reviews: 64,
-    distance: '2.1km',
-    eta: '12分',
+    reviewCount: 64,
+    distance: 2.1,
+    responseRate: 1.0,
+    completionRate: 1.0,
+    createdAt: '2026-03-20', // newcomer!
+    boostActive: false,
+    improvementStatus: null,
     speciality: 'フルディテイル',
     latitude: 35.6762,
     longitude: 139.7580,
-    online: true,
   },
 ];
+
+// Apply ranking algorithm
+const MOCK_PROS = rankPros(MOCK_PROS_RAW).map((pro) => ({
+  ...pro,
+  speciality: (pro as any).speciality as string,
+  latitude: (pro as any).latitude as number,
+  longitude: (pro as any).longitude as number,
+  eta: `${Math.round(pro.distance * 4)}分`,
+}));
 
 const CATEGORY_ICONS: Record<string, string> = {
   exterior: 'car-wash',
@@ -296,12 +321,46 @@ export default function CustomerHome() {
                 <View style={styles.onlineDot} />
               </View>
               <View style={styles.proInfo}>
-                <Text style={styles.proName}>{pro.name}</Text>
+                <View style={styles.proNameRow}>
+                  <Text style={styles.proName}>{pro.name}</Text>
+                  {(pro.badges ?? []).map((badge) => (
+                    <View
+                      key={badge}
+                      style={[
+                        styles.proBadge,
+                        {
+                          backgroundColor:
+                            badge === PRO_BOOST.BADGE_TEXT
+                              ? PRO_BOOST.BADGE_COLOR + '20'
+                              : badge === '新人'
+                              ? '#EFF6FF'
+                              : Colors.primaryFaint,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.proBadgeText,
+                          {
+                            color:
+                              badge === PRO_BOOST.BADGE_TEXT
+                                ? PRO_BOOST.BADGE_COLOR
+                                : badge === '新人'
+                                ? '#3B82F6'
+                                : Colors.primary,
+                          },
+                        ]}
+                      >
+                        {badge}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
                 <Text style={styles.proSpeciality}>{pro.speciality}</Text>
                 <View style={styles.proMeta}>
                   <Ionicons name="star" size={14} color={Colors.gold} />
                   <Text style={styles.proRating}>
-                    {pro.rating} ({pro.reviews})
+                    {pro.rating} ({pro.reviewCount})
                   </Text>
                   <Text style={styles.proDivider}>|</Text>
                   <Ionicons
@@ -309,7 +368,7 @@ export default function CustomerHome() {
                     size={14}
                     color={Colors.textMuted}
                   />
-                  <Text style={styles.proDistance}>{pro.distance}</Text>
+                  <Text style={styles.proDistance}>{pro.distance.toFixed(1)}km</Text>
                 </View>
               </View>
               <View style={styles.proEta}>
@@ -560,10 +619,25 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: Spacing.md,
   },
+  proNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
   proName: {
     fontSize: FontSize.md,
     fontWeight: '700',
     color: Colors.textPrimary,
+  },
+  proBadge: {
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+    borderRadius: BorderRadius.full,
+  },
+  proBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   proSpeciality: {
     fontSize: FontSize.sm,

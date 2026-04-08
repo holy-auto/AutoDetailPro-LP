@@ -240,3 +240,92 @@ export const REVIEW = {
   MIN_RATING: 1,
   MAX_RATING: 5,
 } as const;
+
+// --- Pro Ranking & Rating Policy ---
+export const PRO_RANKING = {
+  // 新人優先表示（登録後N日以内）
+  NEWCOMER_BOOST_DAYS: 30,
+  NEWCOMER_BOOST_WEIGHT: 50,  // ランキングスコアに+50加算
+
+  // 評価基準
+  RATING_GOOD_THRESHOLD: 4.0,        // 基準ライン（4.0以上は問題なし）
+  RATING_WARNING_THRESHOLD: 3.5,     // 警告ライン（3.5未満で改善プラン発動）
+  MIN_REVIEWS_FOR_EVALUATION: 5,     // 評価対象になる最低レビュー数
+
+  // 改善プラン
+  IMPROVEMENT_PLAN: {
+    EVALUATION_PERIOD_DAYS: 30,      // 改善期間（30日）
+    TARGET_RATING: 3.8,              // 改善目標（3.8以上に回復）
+    MIN_ORDERS_DURING_PLAN: 5,       // 改善期間中の最低受注数
+    MAX_EXTENSIONS: 1,               // 延長回数上限
+    RESTRICTIONS: {
+      HIDE_FROM_PRIORITY: true,      // 優先表示から除外
+      SHOW_IMPROVEMENT_BADGE: true,  // 改善中バッジ表示
+    },
+  },
+
+  // 強制退会
+  FORCED_REMOVAL: {
+    TRIGGER_ON_PLAN_FAILURE: true,   // 改善プラン失敗で発動
+    RATING_FLOOR: 2.0,               // 即時退会ライン（2.0未満）
+    COOLDOWN_DAYS: 90,               // 再登録禁止期間
+  },
+
+  // スコア計算ウェイト（合計100）
+  SCORE_WEIGHTS: {
+    RATING: 40,           // 評価スコア（5段階→0-40点）
+    DISTANCE: 25,         // 距離の近さ（近いほど高得点）
+    RESPONSE_RATE: 15,    // 応答率
+    COMPLETION_RATE: 10,  // 完了率
+    NEWCOMER_BONUS: 10,   // 新人ボーナス枠（新人以外は0）
+  },
+} as const;
+
+// --- Pro Boost (有料優先表示) ---
+export const PRO_BOOST = {
+  PLANS: [
+    {
+      id: 'boost_3d',
+      name: '3日間ブースト',
+      duration_days: 3,
+      price: 980,
+      boost_weight: 30,
+      label: 'お試し',
+    },
+    {
+      id: 'boost_7d',
+      name: '1週間ブースト',
+      duration_days: 7,
+      price: 1980,
+      boost_weight: 30,
+      badge: '人気',
+      label: '人気No.1',
+    },
+    {
+      id: 'boost_30d',
+      name: '1ヶ月ブースト',
+      duration_days: 30,
+      price: 5980,
+      boost_weight: 30,
+      label: 'お得',
+    },
+  ],
+  // ブースト中のUI
+  BADGE_TEXT: '優先',
+  BADGE_COLOR: '#F59E0B',
+  // 同時ブースト制限
+  MAX_CONCURRENT_BOOSTS: 1,
+} as const;
+
+export type BoostPlanId = (typeof PRO_BOOST.PLANS)[number]['id'];
+
+// 改善プランのステータス
+export const IMPROVEMENT_STATUS = {
+  ACTIVE: 'active',
+  PASSED: 'passed',
+  FAILED: 'failed',
+  EXTENDED: 'extended',
+} as const;
+
+export type ImprovementStatus =
+  (typeof IMPROVEMENT_STATUS)[keyof typeof IMPROVEMENT_STATUS];

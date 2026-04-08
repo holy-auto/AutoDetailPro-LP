@@ -83,6 +83,22 @@ CREATE TABLE pro_profiles (
   payout_schedule TEXT DEFAULT 'weekly' CHECK (payout_schedule IN ('instant', 'weekly', 'monthly')),
   cash_enabled BOOLEAN DEFAULT TRUE,
   suspended BOOLEAN DEFAULT FALSE,
+  -- Rating & ranking
+  response_rate DOUBLE PRECISION DEFAULT 1.0,
+  completion_rate DOUBLE PRECISION DEFAULT 1.0,
+  -- Paid boost
+  boost_plan_id TEXT,
+  boost_started_at TIMESTAMPTZ,
+  boost_expires_at TIMESTAMPTZ,
+  -- Improvement plan
+  improvement_status TEXT CHECK (improvement_status IN ('active', 'passed', 'failed', 'extended')),
+  improvement_started_at TIMESTAMPTZ,
+  improvement_extension_count INT DEFAULT 0,
+  -- Forced removal
+  removed_at TIMESTAMPTZ,
+  removal_reason TEXT,
+  removal_cooldown_until TIMESTAMPTZ,
+  --
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -315,7 +331,56 @@ CREATE POLICY "Admins can manage all disputes" ON disputes FOR ALL USING (
 );
 
 -- ============================================
--- 10. Realtime subscriptions
+-- 10. Boost Purchases (有料優先表示)
+-- ============================================
+CREATE TABLE boost_purchases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pro_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  plan_id TEXT NOT NULL,
+  price INT NOT NULL,
+  duration_days INT NOT NULL,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  stripe_payment_intent_id TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'cancelled')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE boost_purchases ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Pros can view own boosts" ON boost_purchases FOR SELECT USING (auth.uid() = pro_id);
+CREATE POLICY "Pros can purchase boosts" ON boost_purchases FOR INSERT WITH CHECK (auth.uid() = pro_id);
+CREATE POLICY "Admins can manage boosts" ON boost_purchases FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- ============================================
+-- 11. Improvement Plans (改善プラン履歴)
+-- ============================================
+CREATE TABLE improvement_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pro_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  rating_at_start DOUBLE PRECISION NOT NULL,
+  target_rating DOUBLE PRECISION NOT NULL DEFAULT 3.8,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  evaluation_at TIMESTAMPTZ NOT NULL,  -- started_at + 30 days
+  rating_at_end DOUBLE PRECISION,
+  orders_completed INT DEFAULT 0,
+  extension_count INT DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'passed', 'failed', 'extended')),
+  resolved_at TIMESTAMPTZ,
+  resolved_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE improvement_plans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Pros can view own plans" ON improvement_plans FOR SELECT USING (auth.uid() = pro_id);
+CREATE POLICY "Admins can manage plans" ON improvement_plans FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- ============================================
+-- 12. Realtime subscriptions
 -- ============================================
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE pro_profiles;
@@ -348,6 +413,54 @@ BEGIN
       completed_at = NOW()
   WHERE status = 'pro_marked_done'
     AND pro_completed_at < NOW() - INTERVAL '30 minutes';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Evaluate improvement plans (run daily via pg_cron)
+CREATE OR REPLACE FUNCTION evaluate_improvement_plans()
+RETURNS void AS $$
+DECLARE
+  plan RECORD;
+  avg_rating DOUBLE PRECISION;
+  order_count INT;
+BEGIN
+  FOR plan IN
+    SELECT ip.*, pp.id AS pro_id
+    FROM improvement_plans ip
+    JOIN pro_profiles pp ON pp.id = ip.pro_id
+    WHERE ip.status IN ('active', 'extended')
+      AND ip.evaluation_at <= NOW()
+  LOOP
+    -- Get current average rating
+    SELECT COALESCE(AVG(r.rating), 0), COUNT(*)
+    INTO avg_rating, order_count
+    FROM reviews r
+    WHERE r.target_id = plan.pro_id
+      AND r.created_at >= plan.started_at;
+
+    IF avg_rating >= plan.target_rating AND order_count >= 5 THEN
+      -- Passed: restore normal status
+      UPDATE improvement_plans SET status = 'passed', rating_at_end = avg_rating, orders_completed = order_count, resolved_at = NOW() WHERE id = plan.id;
+      UPDATE pro_profiles SET improvement_status = 'passed', improvement_started_at = NULL WHERE id = plan.pro_id;
+    ELSIF plan.extension_count < 1 THEN
+      -- Allow one extension
+      UPDATE improvement_plans SET status = 'extended', extension_count = plan.extension_count + 1, evaluation_at = NOW() + INTERVAL '30 days' WHERE id = plan.id;
+      UPDATE pro_profiles SET improvement_status = 'extended', improvement_extension_count = plan.extension_count + 1 WHERE id = plan.pro_id;
+    ELSE
+      -- Failed: flag for forced removal
+      UPDATE improvement_plans SET status = 'failed', rating_at_end = avg_rating, orders_completed = order_count, resolved_at = NOW() WHERE id = plan.id;
+      UPDATE pro_profiles SET improvement_status = 'failed', suspended = TRUE, removed_at = NOW(), removal_reason = '改善プラン未達成による強制退会', removal_cooldown_until = NOW() + INTERVAL '90 days' WHERE id = plan.pro_id;
+    END IF;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Expire boost plans (run daily via pg_cron)
+CREATE OR REPLACE FUNCTION expire_boosts()
+RETURNS void AS $$
+BEGIN
+  UPDATE boost_purchases SET status = 'expired' WHERE status = 'active' AND expires_at < NOW();
+  UPDATE pro_profiles SET boost_plan_id = NULL, boost_started_at = NULL, boost_expires_at = NULL WHERE boost_expires_at IS NOT NULL AND boost_expires_at < NOW();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
