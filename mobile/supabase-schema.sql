@@ -618,10 +618,149 @@ CREATE INDEX idx_notifications_user ON notifications (user_id);
 CREATE INDEX idx_notifications_unread ON notifications (user_id) WHERE read = FALSE;
 
 -- ============================================
--- 21. Realtime subscriptions
+-- 21. Chat Messages (チャット — 運営監視付き)
+-- ============================================
+CREATE TABLE chat_rooms (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  customer_id UUID NOT NULL REFERENCES profiles(id),
+  pro_id UUID NOT NULL REFERENCES profiles(id),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed', 'flagged')),
+  flagged_reason TEXT,
+  flagged_at TIMESTAMPTZ,
+  flagged_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  closed_at TIMESTAMPTZ,
+  UNIQUE(order_id)
+);
+
+ALTER TABLE chat_rooms ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Participants can view own chat rooms" ON chat_rooms FOR SELECT USING (auth.uid() IN (customer_id, pro_id));
+CREATE POLICY "Admins can view all chat rooms" ON chat_rooms FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE TABLE chat_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id UUID NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES profiles(id),
+  message TEXT NOT NULL,
+  message_type TEXT NOT NULL DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'system', 'admin_warning')),
+  image_url TEXT,
+  -- NGワード検知
+  flagged BOOLEAN DEFAULT FALSE,
+  flag_reason TEXT,
+  -- 管理者介入メッセージ
+  is_admin_message BOOLEAN DEFAULT FALSE,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Participants can view messages in own rooms" ON chat_messages FOR SELECT USING (
+  EXISTS (SELECT 1 FROM chat_rooms WHERE id = room_id AND (customer_id = auth.uid() OR pro_id = auth.uid()))
+);
+CREATE POLICY "Participants can send messages" ON chat_messages FOR INSERT WITH CHECK (
+  auth.uid() = sender_id AND
+  EXISTS (SELECT 1 FROM chat_rooms WHERE id = room_id AND status = 'active' AND (customer_id = auth.uid() OR pro_id = auth.uid()))
+);
+CREATE POLICY "Admins can manage all messages" ON chat_messages FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_chat_messages_room ON chat_messages (room_id, created_at);
+CREATE INDEX idx_chat_rooms_order ON chat_rooms (order_id);
+CREATE INDEX idx_chat_messages_flagged ON chat_messages (flagged) WHERE flagged = TRUE;
+
+-- ============================================
+-- 22. KYC / Identity Verification (本人確認)
+-- ============================================
+CREATE TABLE kyc_verifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  -- 身分証明書
+  id_document_type TEXT NOT NULL CHECK (id_document_type IN ('drivers_license', 'my_number', 'passport', 'residence_card')),
+  id_document_front_url TEXT NOT NULL,
+  id_document_back_url TEXT,
+  -- リアルタイム顔写真
+  selfie_url TEXT NOT NULL,
+  -- 審査
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'resubmit')),
+  rejection_reason TEXT,
+  reviewed_by UUID REFERENCES profiles(id),
+  reviewed_at TIMESTAMPTZ,
+  -- Stripe Connect
+  stripe_account_id TEXT,
+  stripe_onboarding_complete BOOLEAN DEFAULT FALSE,
+  --
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE kyc_verifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own KYC" ON kyc_verifications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can submit KYC" ON kyc_verifications FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own KYC" ON kyc_verifications FOR UPDATE USING (auth.uid() = user_id AND status IN ('pending', 'resubmit'));
+CREATE POLICY "Admins can manage all KYC" ON kyc_verifications FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_kyc_user ON kyc_verifications (user_id);
+CREATE INDEX idx_kyc_status ON kyc_verifications (status) WHERE status = 'pending';
+
+-- ============================================
+-- 23. Work Photos (施工写真 — プロの実績ポートフォリオ)
+-- ============================================
+CREATE TABLE work_photos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  pro_id UUID NOT NULL REFERENCES profiles(id),
+  photo_type TEXT NOT NULL CHECK (photo_type IN ('before', 'after')),
+  photo_url TEXT NOT NULL,
+  caption TEXT,
+  is_public BOOLEAN DEFAULT FALSE,  -- プロの施工履歴として公開するか
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE work_photos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view public work photos" ON work_photos FOR SELECT USING (is_public = TRUE);
+CREATE POLICY "Pros can manage own work photos" ON work_photos FOR ALL USING (auth.uid() = pro_id);
+CREATE POLICY "Customers can view photos of own orders" ON work_photos FOR SELECT USING (
+  EXISTS (SELECT 1 FROM orders WHERE id = order_id AND customer_id = auth.uid())
+);
+CREATE POLICY "Admins can manage all work photos" ON work_photos FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_work_photos_pro ON work_photos (pro_id) WHERE is_public = TRUE;
+CREATE INDEX idx_work_photos_order ON work_photos (order_id);
+
+-- ============================================
+-- 24. Push Notification Tokens (デバイストークン)
+-- ============================================
+CREATE TABLE push_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  token TEXT NOT NULL,
+  platform TEXT NOT NULL CHECK (platform IN ('ios', 'android', 'web')),
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, token)
+);
+
+ALTER TABLE push_tokens ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own tokens" ON push_tokens FOR ALL USING (auth.uid() = user_id);
+
+CREATE INDEX idx_push_tokens_user ON push_tokens (user_id) WHERE active = TRUE;
+
+-- ============================================
+-- 25. Realtime subscriptions
 -- ============================================
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE pro_profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
 
 -- ============================================
 -- 11. Helper functions

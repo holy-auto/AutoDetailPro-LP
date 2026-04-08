@@ -415,6 +415,60 @@ export const QUALITY_AUDIT = {
 export type AuditChecklistItem = (typeof QUALITY_AUDIT.CHECKLIST)[number];
 export type AuditChecklistId = AuditChecklistItem['id'];
 
+// --- Chat ---
+export const CHAT = {
+  MAX_MESSAGE_LENGTH: 500,
+  // NGワード（個人情報交換防止）
+  NG_PATTERNS: [
+    /\d{3}[-\s]?\d{4}[-\s]?\d{4}/,    // 電話番号
+    /[\w.-]+@[\w.-]+\.\w+/,             // メールアドレス
+    /line\.me|LINE ID|ライン/i,          // LINE
+    /instagram|insta|インスタ/i,         // Instagram
+    /twitter|ツイッター/i,               // Twitter/X
+  ],
+  NG_WARNING: 'サービス外での連絡先交換は禁止されています。',
+  // 自動クローズ（注文完了24時間後）
+  AUTO_CLOSE_HOURS: 24,
+} as const;
+
+// --- KYC (本人確認) ---
+export const KYC = {
+  DOCUMENT_TYPES: [
+    { id: 'drivers_license', name: '運転免許証', requiresBack: true },
+    { id: 'my_number', name: 'マイナンバーカード', requiresBack: false },
+    { id: 'passport', name: 'パスポート', requiresBack: false },
+    { id: 'residence_card', name: '在留カード', requiresBack: true },
+  ],
+  // セルフィー撮影の指示
+  SELFIE_INSTRUCTIONS: '正面を向いて、顔全体が明るく写るように撮影してください。',
+  // 審査タイムアウト（営業日）
+  REVIEW_DEADLINE_DAYS: 3,
+} as const;
+
+export type KYCDocumentType = (typeof KYC.DOCUMENT_TYPES)[number]['id'];
+
+// --- Work Photos (施工写真) ---
+export const WORK_PHOTOS = {
+  MAX_PHOTOS_PER_ORDER: 10,
+  MAX_FILE_SIZE_MB: 10,
+  ALLOWED_TYPES: ['image/jpeg', 'image/png', 'image/heic'],
+} as const;
+
+// --- Push Notifications ---
+export const PUSH_NOTIFICATIONS = {
+  TYPES: {
+    ORDER_STATUS: 'order_status',
+    CHAT_MESSAGE: 'chat_message',
+    QUALITY_AUDIT: 'quality_audit_request',
+    AUDIT_REWARD: 'audit_reward',
+    COUPON_ISSUED: 'coupon_issued',
+    IMPROVEMENT_PLAN: 'improvement_plan_started',
+    REVIEW_REQUEST: 'review_request',
+    MATCH_REQUEST: 'match_request',
+    SUBSCRIPTION_ORDER: 'subscription_order',
+  },
+} as const;
+
 // --- Scheduled Booking (先日程予約) ---
 export const SCHEDULED_BOOKING = {
   MIN_ADVANCE_HOURS: 2,          // 最低2時間先
