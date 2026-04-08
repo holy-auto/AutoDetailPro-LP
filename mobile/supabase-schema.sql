@@ -67,7 +67,7 @@ INSERT INTO service_categories (id, name, description, icon, color, sort_order) 
   ('interior', '内装クリーニング', 'シート・ダッシュボード・フロアマット', 'car-seat', '#8B5CF6', 2),
   ('coating', 'コーティング', 'ガラスコーティング・セラミック', 'shield-check', '#F59E0B', 3),
   ('polish', '磨き・研磨', '傷消し・ポリッシュ・鏡面仕上げ', 'auto-fix', '#EC4899', 4),
-  ('full_detail', 'フルディテイル', '外装＋内装＋コーティングのフルコース', 'star-circle', '#1B4332', 5),
+  ('full_detail', 'フルディテイル', '外装＋内装＋コーティングのフルコース', 'star-circle', '#1E3A5F', 5),
   ('engine', 'エンジンルーム', 'エンジンルーム洗浄・美装', 'engine', '#EF4444', 6);
 
 -- ============================================

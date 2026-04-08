@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1B4332',
+    color: '#1E3A5F',
   },
   sublabel: {
     fontSize: 12,

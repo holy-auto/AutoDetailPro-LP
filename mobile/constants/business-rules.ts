@@ -84,7 +84,7 @@ export const ORDER_STATUS_COLORS: Record<
   payment_authorized: { color: '#3B82F6', bg: '#EFF6FF' },
   requested: { color: '#3B82F6', bg: '#EFF6FF' },
   requested_expanded: { color: '#8B5CF6', bg: '#F5F3FF' },
-  accepted: { color: '#1B4332', bg: '#D8F3DC' },
+  accepted: { color: '#1E3A5F', bg: '#DBEAFE' },
   on_the_way: { color: '#F59E0B', bg: '#FEF3C7' },
   arrived: { color: '#F59E0B', bg: '#FEF3C7' },
   in_progress: { color: '#D4A574', bg: '#FDF2E6' },
@@ -230,7 +230,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
   { id: 'interior', name: '内装クリーニング', icon: 'car-seat', description: 'シート・ダッシュボード・フロアマット', color: '#8B5CF6' },
   { id: 'coating', name: 'コーティング', icon: 'shield-check', description: 'ガラスコーティング・セラミック', color: '#F59E0B' },
   { id: 'polish', name: '磨き・研磨', icon: 'auto-fix', description: '傷消し・ポリッシュ・鏡面仕上げ', color: '#EC4899' },
-  { id: 'full_detail', name: 'フルディテイル', icon: 'star-circle', description: '外装＋内装＋コーティングのフルコース', color: '#1B4332' },
+  { id: 'full_detail', name: 'フルディテイル', icon: 'star-circle', description: '外装＋内装＋コーティングのフルコース', color: '#1E3A5F' },
   { id: 'engine', name: 'エンジンルーム', icon: 'engine', description: 'エンジンルーム洗浄・美装', color: '#EF4444' },
 ];
 
