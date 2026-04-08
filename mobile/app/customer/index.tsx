@@ -397,35 +397,35 @@ export default function CustomerHome() {
         </View>
       </ScrollView>
 
-      {/* Bottom action buttons */}
-      <View style={styles.bottomActions}>
+      {/* Bottom action bar — 3 buttons horizontal */}
+      <View style={styles.bottomBar}>
         <TouchableOpacity
-          style={styles.secondaryButton}
+          style={styles.sideButton}
           activeOpacity={0.85}
           onPress={handleScheduleBooking}
         >
           <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
-          <Text style={styles.secondaryButtonText}>日時予約</Text>
+          <Text style={styles.sideButtonText}>日時予約</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
-          style={styles.secondaryButton}
+          style={styles.mainButton}
+          activeOpacity={0.85}
+          onPress={handleCallPro}
+        >
+          <Ionicons name="car-sport" size={24} color={Colors.white} />
+          <Text style={styles.mainButtonText}>プロを呼ぶ</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.sideButton}
           activeOpacity={0.85}
           onPress={handleSubscription}
         >
           <Ionicons name="repeat-outline" size={18} color={Colors.success} />
-          <Text style={[styles.secondaryButtonText, { color: Colors.success }]}>定期コース</Text>
+          <Text style={[styles.sideButtonText, { color: Colors.success }]}>定期コース</Text>
         </TouchableOpacity>
       </View>
-
-      {/* FAB - Call Pro Button (Go style) */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.85}
-        onPress={handleCallPro}
-      >
-        <Ionicons name="car-sport" size={24} color={Colors.white} />
-        <Text style={styles.fabText}>プロを呼ぶ</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -717,47 +717,47 @@ const styles = StyleSheet.create({
     color: Colors.primaryMedium,
   },
 
-  // Bottom action buttons
-  bottomActions: {
+  // Bottom action bar
+  bottomBar: {
     position: 'absolute',
-    bottom: 100,
-    left: Spacing.lg,
-    right: Spacing.lg,
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  secondaryButton: {
+    bottom: 30,
+    left: Spacing.md,
+    right: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  sideButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.white,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: BorderRadius.full,
-    gap: 5,
+    borderRadius: BorderRadius.lg,
+    gap: 4,
     shadowColor: Colors.shadowDark,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 4,
     borderWidth: 1,
     borderColor: Colors.borderLight,
+    minWidth: 72,
   },
-  secondaryButtonText: {
-    fontSize: FontSize.sm,
+  sideButtonText: {
+    fontSize: FontSize.xs,
     fontWeight: '700',
     color: Colors.primary,
   },
-
-  // FAB
-  fab: {
-    position: 'absolute',
-    bottom: 40,
-    alignSelf: 'center',
+  mainButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.primary,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     borderRadius: BorderRadius.full,
     gap: Spacing.sm,
     shadowColor: Colors.primary,
@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  fabText: {
+  mainButtonText: {
     fontSize: FontSize.lg,
     fontWeight: '800',
     color: Colors.white,

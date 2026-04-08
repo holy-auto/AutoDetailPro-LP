@@ -78,6 +78,12 @@ export default function SubscriptionScreen() {
           <Text style={styles.heroSub}>
             定期的にプロの洗車を受けて{'\n'}常にキレイな車をキープ
           </Text>
+          <View style={styles.autoMatchBadge}>
+            <Ionicons name="flash-outline" size={14} color={Colors.primaryMedium} />
+            <Text style={styles.autoMatchText}>
+              毎回、距離・空き・評価から最適なプロを自動マッチング
+            </Text>
+          </View>
         </View>
 
         {/* Plan Selection */}
@@ -207,6 +213,16 @@ const styles = StyleSheet.create({
   heroSub: {
     fontSize: FontSize.sm, color: Colors.textSecondary,
     textAlign: 'center', marginTop: Spacing.sm, lineHeight: 20,
+  },
+  autoMatchBadge: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.primaryFaint,
+    paddingVertical: 8, paddingHorizontal: 14,
+    borderRadius: BorderRadius.full,
+    marginTop: Spacing.md, gap: 6,
+  },
+  autoMatchText: {
+    fontSize: FontSize.xs, color: Colors.primaryLight, fontWeight: '600',
   },
 
   sectionLabel: {
