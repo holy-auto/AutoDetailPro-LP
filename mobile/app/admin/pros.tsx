@@ -4,32 +4,39 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
-  Alert,
   Modal,
+  TextInput,
+  FlatList,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
-import { PRO_RANKING, PRO_BOOST, IMPROVEMENT_STATUS } from '@/constants/business-rules';
+
+type ProStatus = 'online' | 'offline' | 'improvement' | 'suspended';
 
 type ProData = {
   id: string;
   name: string;
   rating: number;
   reviews: number;
-  earnings: number;
-  jobs: number;
-  online: boolean;
-  categories: string[];
-  createdAt: string;
-  isNewcomer: boolean;
-  boostActive: boolean;
-  boostExpiresAt?: string;
-  improvementStatus?: string | null;
-  improvementStartedAt?: string | null;
-  responseRate: number;
+  status: ProStatus;
+  orderCount: number;
   completionRate: number;
+  joinDate: string;
+  categories: string[];
+  mysteryShopScore: number | null;
+  improvementPlan: {
+    active: boolean;
+    startDate?: string;
+    targetRating?: number;
+    progress?: string;
+  } | null;
+  boostActive: boolean;
+  earnings: number;
+  phone: string;
+  email: string;
 };
 
 const MOCK_PROS: ProData[] = [
@@ -38,250 +45,215 @@ const MOCK_PROS: ProData[] = [
     name: '田中 太郎',
     rating: 4.9,
     reviews: 127,
-    earnings: 342000,
-    jobs: 28,
-    online: true,
-    categories: ['外装洗車', '内装クリーニング'],
-    createdAt: '2025-01-15',
-    isNewcomer: false,
-    boostActive: true,
-    boostExpiresAt: '2026-04-15T00:00:00Z',
-    improvementStatus: null,
-    responseRate: 0.98,
+    status: 'online',
+    orderCount: 342,
     completionRate: 0.99,
+    joinDate: '2025-01-15',
+    categories: ['外装洗車', '内装クリーニング', 'コーティング'],
+    mysteryShopScore: 95,
+    improvementPlan: null,
+    boostActive: true,
+    earnings: 1240000,
+    phone: '090-1234-5678',
+    email: 'tanaka@example.com',
   },
   {
     id: '2',
     name: '佐藤 健一',
     rating: 4.8,
     reviews: 89,
-    earnings: 258000,
-    jobs: 19,
-    online: true,
-    categories: ['コーティング', '磨き・研磨'],
-    createdAt: '2025-06-10',
-    isNewcomer: false,
-    boostActive: false,
-    improvementStatus: null,
-    responseRate: 0.95,
+    status: 'online',
+    orderCount: 198,
     completionRate: 0.97,
+    joinDate: '2025-06-10',
+    categories: ['コーティング', '磨き・研磨'],
+    mysteryShopScore: 88,
+    improvementPlan: null,
+    boostActive: false,
+    earnings: 890000,
+    phone: '090-2345-6789',
+    email: 'sato@example.com',
   },
   {
     id: '3',
     name: '鈴木 美咲',
     rating: 5.0,
     reviews: 64,
-    earnings: 412000,
-    jobs: 22,
-    online: false,
-    categories: ['フルディテイル', 'コーティング'],
-    createdAt: '2026-03-20',
-    isNewcomer: true,
-    boostActive: false,
-    improvementStatus: null,
-    responseRate: 1.0,
+    status: 'offline',
+    orderCount: 87,
     completionRate: 1.0,
+    joinDate: '2025-09-20',
+    categories: ['フルディテイル', 'コーティング'],
+    mysteryShopScore: 92,
+    improvementPlan: null,
+    boostActive: false,
+    earnings: 620000,
+    phone: '090-3456-7890',
+    email: 'suzuki@example.com',
   },
   {
     id: '4',
     name: '木村 翔太',
     rating: 3.2,
     reviews: 45,
-    earnings: 89000,
-    jobs: 8,
-    online: false,
+    status: 'improvement',
+    orderCount: 56,
+    completionRate: 0.8,
+    joinDate: '2025-04-01',
     categories: ['外装洗車'],
-    createdAt: '2025-04-01',
-    isNewcomer: false,
+    mysteryShopScore: 52,
+    improvementPlan: {
+      active: true,
+      startDate: '2026-03-25',
+      targetRating: 4.0,
+      progress: '評価改善中 - 残り18日',
+    },
     boostActive: false,
-    improvementStatus: IMPROVEMENT_STATUS.ACTIVE,
-    improvementStartedAt: '2026-03-25',
-    responseRate: 0.72,
-    completionRate: 0.80,
+    earnings: 180000,
+    phone: '090-4567-8901',
+    email: 'kimura@example.com',
   },
   {
     id: '5',
     name: '渡辺 大輔',
     rating: 2.8,
     reviews: 30,
-    earnings: 42000,
-    jobs: 5,
-    online: false,
+    status: 'suspended',
+    orderCount: 23,
+    completionRate: 0.6,
+    joinDate: '2025-02-10',
     categories: ['外装洗車', 'エンジンルーム'],
-    createdAt: '2025-02-10',
-    isNewcomer: false,
+    mysteryShopScore: 38,
+    improvementPlan: {
+      active: false,
+      startDate: '2026-01-10',
+      targetRating: 4.0,
+      progress: '未達成 - プラン終了',
+    },
     boostActive: false,
-    improvementStatus: IMPROVEMENT_STATUS.FAILED,
-    improvementStartedAt: '2026-01-10',
-    responseRate: 0.55,
-    completionRate: 0.60,
+    earnings: 42000,
+    phone: '090-5678-9012',
+    email: 'watanabe@example.com',
+  },
+  {
+    id: '6',
+    name: '山本 由美',
+    rating: 4.6,
+    reviews: 52,
+    status: 'online',
+    orderCount: 145,
+    completionRate: 0.95,
+    joinDate: '2025-07-05',
+    categories: ['内装クリーニング', 'フルディテイル'],
+    mysteryShopScore: 82,
+    improvementPlan: null,
+    boostActive: false,
+    earnings: 540000,
+    phone: '090-6789-0123',
+    email: 'yamamoto@example.com',
   },
 ];
 
-type FilterTab = 'all' | 'good' | 'warning' | 'improvement' | 'removed';
+const STATUS_CONFIG: Record<ProStatus, { label: string; color: string; bg: string }> = {
+  online: { label: 'オンライン', color: Colors.success, bg: Colors.success + '15' },
+  offline: { label: 'オフライン', color: Colors.textMuted, bg: Colors.offWhite },
+  improvement: { label: '改善プラン中', color: '#F59E0B', bg: '#FEF3C7' },
+  suspended: { label: '停止中', color: Colors.error, bg: Colors.error + '15' },
+};
 
 export default function AdminProsScreen() {
-  const [filterTab, setFilterTab] = useState<FilterTab>('all');
-  const [detailPro, setDetailPro] = useState<ProData | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPro, setSelectedPro] = useState<ProData | null>(null);
 
-  const filteredPros = MOCK_PROS.filter((pro) => {
-    switch (filterTab) {
-      case 'good':
-        return pro.rating >= PRO_RANKING.RATING_GOOD_THRESHOLD && !pro.improvementStatus;
-      case 'warning':
-        return (
-          pro.rating < PRO_RANKING.RATING_GOOD_THRESHOLD &&
-          pro.rating >= PRO_RANKING.RATING_WARNING_THRESHOLD &&
-          !pro.improvementStatus
-        );
-      case 'improvement':
-        return pro.improvementStatus === IMPROVEMENT_STATUS.ACTIVE ||
-               pro.improvementStatus === IMPROVEMENT_STATUS.EXTENDED;
-      case 'removed':
-        return pro.improvementStatus === IMPROVEMENT_STATUS.FAILED;
-      default:
-        return true;
+  const filteredPros = MOCK_PROS.filter((pro) =>
+    pro.name.includes(searchQuery) ||
+    pro.categories.some((cat) => cat.includes(searchQuery)),
+  );
+
+  const onlineCount = MOCK_PROS.filter((p) => p.status === 'online').length;
+
+  const getRatingColor = (rating: number) => {
+    if (rating >= 4.5) return Colors.success;
+    if (rating >= 3.5) return Colors.warning;
+    return Colors.error;
+  };
+
+  const renderStars = (rating: number) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <Ionicons
+          key={i}
+          name={i <= Math.floor(rating) ? 'star' : i - 0.5 <= rating ? 'star-half' : 'star-outline'}
+          size={14}
+          color={getRatingColor(rating)}
+        />,
+      );
     }
-  });
-
-  const onlineCount = MOCK_PROS.filter((p) => p.online).length;
-  const improvementCount = MOCK_PROS.filter(
-    (p) =>
-      p.improvementStatus === IMPROVEMENT_STATUS.ACTIVE ||
-      p.improvementStatus === IMPROVEMENT_STATUS.EXTENDED,
-  ).length;
+    return stars;
+  };
 
   const handleStartImprovement = (pro: ProData) => {
     Alert.alert(
       '改善プラン開始',
-      `${pro.name}（評価 ${pro.rating}）に改善プランを適用しますか？\n\n` +
-        `・期間: ${PRO_RANKING.IMPROVEMENT_PLAN.EVALUATION_PERIOD_DAYS}日間\n` +
-        `・目標: 評価 ${PRO_RANKING.IMPROVEMENT_PLAN.TARGET_RATING} 以上\n` +
-        `・最低受注: ${PRO_RANKING.IMPROVEMENT_PLAN.MIN_ORDERS_DURING_PLAN}件\n` +
-        `・優先表示から除外されます`,
+      `${pro.name}に改善プランを開始しますか？\n\n・期間: 30日間\n・目標: 評価 4.0 以上\n・優先表示から除外されます`,
       [
         { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '適用する',
-          onPress: () => {
-            Alert.alert('完了', '改善プランを適用しました');
-          },
-        },
+        { text: '開始する', onPress: () => Alert.alert('完了', '改善プランを開始しました') },
       ],
     );
   };
 
-  const handleForceRemoval = (pro: ProData) => {
+  const handleSuspend = (pro: ProData) => {
     Alert.alert(
-      '強制退会',
-      `${pro.name}を強制退会させますか？\n\n` +
-        `・理由: ${pro.improvementStatus === IMPROVEMENT_STATUS.FAILED ? '改善プラン未達成' : `評価 ${pro.rating} が最低基準を下回っています`}\n` +
-        `・${PRO_RANKING.FORCED_REMOVAL.COOLDOWN_DAYS}日間の再登録禁止\n` +
-        `・この操作は取り消せません`,
+      'アカウント停止',
+      `${pro.name}のアカウントを停止しますか？\n\n・新規受注が停止されます\n・この操作は後から解除できます`,
       [
         { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '退会させる',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('完了', '強制退会処理が完了しました');
-          },
-        },
+        { text: '停止する', style: 'destructive', onPress: () => Alert.alert('完了', 'アカウントを停止しました') },
       ],
     );
   };
 
-  const getRatingColor = (rating: number) => {
-    if (rating >= PRO_RANKING.RATING_GOOD_THRESHOLD) return Colors.success;
-    if (rating >= PRO_RANKING.RATING_WARNING_THRESHOLD) return Colors.gold;
-    return Colors.error;
+  const handleBoost = (pro: ProData) => {
+    Alert.alert(
+      'ブースト付与',
+      `${pro.name}にブーストを付与しますか？\n\n・検索結果で優先表示されます\n・期間: 7日間`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        { text: '付与する', onPress: () => Alert.alert('完了', 'ブーストを付与しました') },
+      ],
+    );
   };
-
-  const getStatusInfo = (pro: ProData) => {
-    if (pro.improvementStatus === IMPROVEMENT_STATUS.FAILED) {
-      return { label: '退会対象', color: Colors.error, bg: Colors.error + '15' };
-    }
-    if (
-      pro.improvementStatus === IMPROVEMENT_STATUS.ACTIVE ||
-      pro.improvementStatus === IMPROVEMENT_STATUS.EXTENDED
-    ) {
-      return { label: '改善中', color: '#F59E0B', bg: '#FEF3C7' };
-    }
-    if (pro.isNewcomer) {
-      return { label: '新人', color: '#3B82F6', bg: '#EFF6FF' };
-    }
-    if (pro.boostActive) {
-      return { label: 'ブースト中', color: PRO_BOOST.BADGE_COLOR, bg: PRO_BOOST.BADGE_COLOR + '15' };
-    }
-    if (pro.online) {
-      return { label: '稼働中', color: Colors.success, bg: Colors.success + '15' };
-    }
-    return { label: 'オフライン', color: Colors.textMuted, bg: Colors.offWhite };
-  };
-
-  const TABS: { key: FilterTab; label: string; count?: number }[] = [
-    { key: 'all', label: 'すべて', count: MOCK_PROS.length },
-    { key: 'good', label: '良好' },
-    { key: 'warning', label: '注意' },
-    { key: 'improvement', label: '改善中', count: improvementCount },
-    { key: 'removed', label: '退会対象' },
-  ];
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>プロ管理</Text>
-        <Text style={styles.count}>
-          {MOCK_PROS.length}名登録 / {onlineCount}名稼働中
+        <Text style={styles.subtitle}>
+          {MOCK_PROS.length}名登録 / {onlineCount}名オンライン
         </Text>
       </View>
 
-      {/* Rating policy summary */}
-      <View style={styles.policyCard}>
-        <View style={styles.policyRow}>
-          <View style={[styles.policyDot, { backgroundColor: Colors.success }]} />
-          <Text style={styles.policyText}>
-            {PRO_RANKING.RATING_GOOD_THRESHOLD}以上 — 通常表示
-          </Text>
-        </View>
-        <View style={styles.policyRow}>
-          <View style={[styles.policyDot, { backgroundColor: Colors.gold }]} />
-          <Text style={styles.policyText}>
-            {PRO_RANKING.RATING_WARNING_THRESHOLD}〜{PRO_RANKING.RATING_GOOD_THRESHOLD} — 注意
-          </Text>
-        </View>
-        <View style={styles.policyRow}>
-          <View style={[styles.policyDot, { backgroundColor: Colors.error }]} />
-          <Text style={styles.policyText}>
-            {PRO_RANKING.RATING_WARNING_THRESHOLD}未満 — 改善プラン → 退会
-          </Text>
+      {/* Search Bar */}
+      <View style={styles.searchWrap}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={18} color={Colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="名前やカテゴリで検索..."
+            placeholderTextColor={Colors.textMuted}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
-
-      {/* Filter Tabs */}
-      <FlatList
-        horizontal
-        data={TABS}
-        keyExtractor={(t) => t.key}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabRow}
-        renderItem={({ item: tab }) => (
-          <TouchableOpacity
-            style={[styles.tab, filterTab === tab.key && styles.tabActive]}
-            onPress={() => setFilterTab(tab.key)}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                filterTab === tab.key && styles.tabTextActive,
-              ]}
-            >
-              {tab.label}
-              {tab.count !== undefined ? ` (${tab.count})` : ''}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
 
       {/* Pro List */}
       <FlatList
@@ -289,92 +261,73 @@ export default function AdminProsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item: pro }) => {
-          const statusInfo = getStatusInfo(pro);
-          const ratingColor = getRatingColor(pro.rating);
-          const needsAction =
-            pro.rating < PRO_RANKING.RATING_WARNING_THRESHOLD &&
-            !pro.improvementStatus;
-
+          const statusConfig = STATUS_CONFIG[pro.status];
           return (
             <TouchableOpacity
               style={styles.card}
-              onPress={() => setDetailPro(pro)}
+              onPress={() => setSelectedPro(pro)}
             >
+              {/* Card Header */}
               <View style={styles.cardHeader}>
                 <View style={styles.proInfo}>
                   <View style={styles.avatarContainer}>
                     <View style={styles.avatar}>
-                      <Ionicons
-                        name="person"
-                        size={24}
-                        color={Colors.primaryMedium}
-                      />
+                      <Ionicons name="person" size={24} color={Colors.primaryMedium} />
                     </View>
                     <View
                       style={[
                         styles.onlineIndicator,
                         {
-                          backgroundColor: pro.online
-                            ? Colors.success
-                            : Colors.textMuted,
+                          backgroundColor:
+                            pro.status === 'online' ? Colors.success : Colors.textMuted,
                         },
                       ]}
                     />
                   </View>
                   <View>
-                    <View style={styles.nameRow}>
-                      <Text style={styles.proName}>{pro.name}</Text>
-                      {pro.isNewcomer && (
-                        <View style={styles.newcomerTag}>
-                          <Text style={styles.newcomerTagText}>新人</Text>
-                        </View>
-                      )}
-                    </View>
+                    <Text style={styles.proName}>{pro.name}</Text>
                     <View style={styles.ratingRow}>
-                      <Ionicons name="star" size={14} color={ratingColor} />
-                      <Text style={[styles.ratingText, { color: ratingColor }]}>
-                        {pro.rating} ({pro.reviews}件)
+                      {renderStars(pro.rating)}
+                      <Text style={[styles.ratingText, { color: getRatingColor(pro.rating) }]}>
+                        {pro.rating}
                       </Text>
+                      <Text style={styles.reviewCount}>({pro.reviews}件)</Text>
                     </View>
                   </View>
                 </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: statusInfo.bg },
-                  ]}
-                >
-                  <Text
-                    style={[styles.statusText, { color: statusInfo.color }]}
-                  >
-                    {statusInfo.label}
-                  </Text>
+                <View style={styles.statusBadges}>
+                  <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+                    <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                      {statusConfig.label}
+                    </Text>
+                  </View>
+                  {pro.improvementPlan?.active && (
+                    <View style={[styles.statusBadge, { backgroundColor: '#FEF3C7' }]}>
+                      <Ionicons name="alert-circle" size={10} color="#F59E0B" />
+                      <Text style={[styles.statusText, { color: '#F59E0B' }]}>改善中</Text>
+                    </View>
+                  )}
+                  {pro.boostActive && (
+                    <View style={[styles.statusBadge, { backgroundColor: Colors.primaryFaint }]}>
+                      <Ionicons name="rocket" size={10} color={Colors.primaryMedium} />
+                      <Text style={[styles.statusText, { color: Colors.primaryMedium }]}>ブースト</Text>
+                    </View>
+                  )}
                 </View>
               </View>
 
-              {/* Categories */}
-              <View style={styles.categories}>
-                {pro.categories.map((cat, idx) => (
-                  <View key={idx} style={styles.categoryTag}>
-                    <Text style={styles.categoryTagText}>{cat}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* Stats */}
+              {/* Stats Row */}
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
-                  <Text style={styles.statValue}>
-                    ¥{(pro.earnings / 10000).toFixed(1)}万
-                  </Text>
-                  <Text style={styles.statLabel}>今月売上</Text>
+                  <Text style={styles.statValue}>{pro.orderCount}</Text>
+                  <Text style={styles.statLabel}>注文数</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.stat}>
-                  <Text style={styles.statValue}>
-                    {Math.round(pro.responseRate * 100)}%
+                  <Text style={[styles.statValue, { color: getRatingColor(pro.rating) }]}>
+                    {pro.rating}
                   </Text>
-                  <Text style={styles.statLabel}>応答率</Text>
+                  <Text style={styles.statLabel}>評価</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.stat}>
@@ -384,38 +337,6 @@ export default function AdminProsScreen() {
                   <Text style={styles.statLabel}>完了率</Text>
                 </View>
               </View>
-
-              {/* Action buttons */}
-              {needsAction && (
-                <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={() => handleStartImprovement(pro)}
-                >
-                  <Ionicons name="warning" size={16} color="#F59E0B" />
-                  <Text style={styles.actionBtnText}>
-                    改善プランを適用
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {pro.improvementStatus === IMPROVEMENT_STATUS.ACTIVE && (
-                <View style={styles.improvementInfo}>
-                  <Ionicons name="time" size={16} color="#F59E0B" />
-                  <Text style={styles.improvementInfoText}>
-                    改善プラン実施中 — 目標: {PRO_RANKING.IMPROVEMENT_PLAN.TARGET_RATING}以上
-                  </Text>
-                </View>
-              )}
-
-              {pro.improvementStatus === IMPROVEMENT_STATUS.FAILED && (
-                <TouchableOpacity
-                  style={styles.removeBtn}
-                  onPress={() => handleForceRemoval(pro)}
-                >
-                  <Ionicons name="close-circle" size={16} color={Colors.error} />
-                  <Text style={styles.removeBtnText}>強制退会を実行</Text>
-                </TouchableOpacity>
-              )}
             </TouchableOpacity>
           );
         }}
@@ -423,111 +344,180 @@ export default function AdminProsScreen() {
 
       {/* Detail Modal */}
       <Modal
-        visible={!!detailPro}
+        visible={!!selectedPro}
         animationType="slide"
         transparent
-        onRequestClose={() => setDetailPro(null)}
+        onRequestClose={() => setSelectedPro(null)}
       >
-        {detailPro && (
+        {selectedPro && (
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{detailPro.name}</Text>
-                <TouchableOpacity onPress={() => setDetailPro(null)}>
-                  <Ionicons name="close" size={24} color={Colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
+              <ScrollView>
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{selectedPro.name}</Text>
+                  <TouchableOpacity onPress={() => setSelectedPro(null)}>
+                    <Ionicons name="close" size={24} color={Colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
 
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>評価状況</Text>
-                <View style={styles.modalStatRow}>
-                  <Text style={styles.modalStatLabel}>現在の評価</Text>
-                  <Text
-                    style={[
-                      styles.modalStatValue,
-                      { color: getRatingColor(detailPro.rating) },
-                    ]}
-                  >
-                    {detailPro.rating} / 5.0
-                  </Text>
-                </View>
-                <View style={styles.modalStatRow}>
-                  <Text style={styles.modalStatLabel}>レビュー数</Text>
-                  <Text style={styles.modalStatValue}>{detailPro.reviews}件</Text>
-                </View>
-                <View style={styles.modalStatRow}>
-                  <Text style={styles.modalStatLabel}>応答率</Text>
-                  <Text style={styles.modalStatValue}>
-                    {Math.round(detailPro.responseRate * 100)}%
-                  </Text>
-                </View>
-                <View style={styles.modalStatRow}>
-                  <Text style={styles.modalStatLabel}>完了率</Text>
-                  <Text style={styles.modalStatValue}>
-                    {Math.round(detailPro.completionRate * 100)}%
-                  </Text>
-                </View>
-              </View>
-
-              {detailPro.boostActive && (
+                {/* Profile Info */}
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>ブースト</Text>
-                  <Text style={styles.modalDetailText}>
-                    有効期限: {detailPro.boostExpiresAt
-                      ? new Date(detailPro.boostExpiresAt).toLocaleDateString('ja-JP')
-                      : '—'}
-                  </Text>
+                  <Text style={styles.modalSectionTitle}>プロフィール</Text>
+                  <View style={styles.modalInfoRow}>
+                    <Text style={styles.modalInfoLabel}>登録日</Text>
+                    <Text style={styles.modalInfoValue}>{selectedPro.joinDate}</Text>
+                  </View>
+                  <View style={styles.modalInfoRow}>
+                    <Text style={styles.modalInfoLabel}>電話番号</Text>
+                    <Text style={styles.modalInfoValue}>{selectedPro.phone}</Text>
+                  </View>
+                  <View style={styles.modalInfoRow}>
+                    <Text style={styles.modalInfoLabel}>メール</Text>
+                    <Text style={styles.modalInfoValue}>{selectedPro.email}</Text>
+                  </View>
+                  <View style={styles.modalInfoRow}>
+                    <Text style={styles.modalInfoLabel}>カテゴリ</Text>
+                    <Text style={styles.modalInfoValue}>
+                      {selectedPro.categories.join(', ')}
+                    </Text>
+                  </View>
+                  <View style={styles.modalInfoRow}>
+                    <Text style={styles.modalInfoLabel}>累計売上</Text>
+                    <Text style={styles.modalInfoValue}>
+                      ¥{selectedPro.earnings.toLocaleString()}
+                    </Text>
+                  </View>
                 </View>
-              )}
 
-              {detailPro.improvementStatus && (
+                {/* Mystery Shop Score */}
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>覆面調査スコア</Text>
+                  {selectedPro.mysteryShopScore !== null ? (
+                    <View style={styles.scoreWrap}>
+                      <View style={styles.scoreCircle}>
+                        <Text
+                          style={[
+                            styles.scoreValue,
+                            {
+                              color:
+                                selectedPro.mysteryShopScore >= 80
+                                  ? Colors.success
+                                  : selectedPro.mysteryShopScore >= 60
+                                  ? Colors.warning
+                                  : Colors.error,
+                            },
+                          ]}
+                        >
+                          {selectedPro.mysteryShopScore}
+                        </Text>
+                        <Text style={styles.scoreMax}>/ 100</Text>
+                      </View>
+                      <View style={styles.scoreBarContainer}>
+                        <View style={styles.scoreBarBg}>
+                          <View
+                            style={[
+                              styles.scoreBarFill,
+                              {
+                                width: `${selectedPro.mysteryShopScore}%`,
+                                backgroundColor:
+                                  selectedPro.mysteryShopScore >= 80
+                                    ? Colors.success
+                                    : selectedPro.mysteryShopScore >= 60
+                                    ? Colors.warning
+                                    : Colors.error,
+                              },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  ) : (
+                    <Text style={styles.noDataText}>未実施</Text>
+                  )}
+                </View>
+
+                {/* Improvement Plan Status */}
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>改善プラン</Text>
-                  <Text style={styles.modalDetailText}>
-                    ステータス: {
-                      detailPro.improvementStatus === IMPROVEMENT_STATUS.ACTIVE ? '実施中' :
-                      detailPro.improvementStatus === IMPROVEMENT_STATUS.EXTENDED ? '延長中' :
-                      detailPro.improvementStatus === IMPROVEMENT_STATUS.PASSED ? '達成' :
-                      '未達成'
-                    }
-                  </Text>
-                  {detailPro.improvementStartedAt && (
-                    <Text style={styles.modalDetailText}>
-                      開始日: {new Date(detailPro.improvementStartedAt).toLocaleDateString('ja-JP')}
-                    </Text>
+                  {selectedPro.improvementPlan ? (
+                    <View style={styles.improvementCard}>
+                      <View style={styles.improvementHeader}>
+                        <Ionicons
+                          name={selectedPro.improvementPlan.active ? 'time' : 'close-circle'}
+                          size={18}
+                          color={selectedPro.improvementPlan.active ? '#F59E0B' : Colors.error}
+                        />
+                        <Text
+                          style={[
+                            styles.improvementStatus,
+                            {
+                              color: selectedPro.improvementPlan.active
+                                ? '#F59E0B'
+                                : Colors.error,
+                            },
+                          ]}
+                        >
+                          {selectedPro.improvementPlan.active ? '実施中' : '未達成'}
+                        </Text>
+                      </View>
+                      {selectedPro.improvementPlan.startDate && (
+                        <Text style={styles.improvementDetail}>
+                          開始日: {selectedPro.improvementPlan.startDate}
+                        </Text>
+                      )}
+                      {selectedPro.improvementPlan.targetRating && (
+                        <Text style={styles.improvementDetail}>
+                          目標評価: {selectedPro.improvementPlan.targetRating} 以上
+                        </Text>
+                      )}
+                      {selectedPro.improvementPlan.progress && (
+                        <Text style={styles.improvementDetail}>
+                          {selectedPro.improvementPlan.progress}
+                        </Text>
+                      )}
+                    </View>
+                  ) : (
+                    <Text style={styles.noDataText}>該当なし</Text>
                   )}
                 </View>
-              )}
 
-              <View style={styles.modalActions}>
-                {detailPro.rating < PRO_RANKING.RATING_WARNING_THRESHOLD &&
-                  !detailPro.improvementStatus && (
-                    <TouchableOpacity
-                      style={styles.modalActionBtn}
-                      onPress={() => {
-                        setDetailPro(null);
-                        handleStartImprovement(detailPro);
-                      }}
-                    >
-                      <Text style={styles.modalActionBtnText}>
-                        改善プランを適用
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                {detailPro.improvementStatus === IMPROVEMENT_STATUS.FAILED && (
+                {/* Actions */}
+                <View style={styles.modalActions}>
                   <TouchableOpacity
-                    style={[styles.modalActionBtn, styles.modalActionBtnDanger]}
+                    style={styles.actionBtnPrimary}
                     onPress={() => {
-                      setDetailPro(null);
-                      handleForceRemoval(detailPro);
+                      setSelectedPro(null);
+                      handleStartImprovement(selectedPro);
                     }}
                   >
-                    <Text style={styles.modalActionBtnDangerText}>
-                      強制退会
-                    </Text>
+                    <Ionicons name="alert-circle" size={18} color={Colors.white} />
+                    <Text style={styles.actionBtnPrimaryText}>改善プラン開始</Text>
                   </TouchableOpacity>
-                )}
-              </View>
+
+                  <TouchableOpacity
+                    style={styles.actionBtnDanger}
+                    onPress={() => {
+                      setSelectedPro(null);
+                      handleSuspend(selectedPro);
+                    }}
+                  >
+                    <Ionicons name="ban" size={18} color={Colors.error} />
+                    <Text style={styles.actionBtnDangerText}>アカウント停止</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionBtnBoost}
+                    onPress={() => {
+                      setSelectedPro(null);
+                      handleBoost(selectedPro);
+                    }}
+                  >
+                    <Ionicons name="rocket" size={18} color={Colors.primaryMedium} />
+                    <Text style={styles.actionBtnBoostText}>ブースト付与</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
           </View>
         )}
@@ -537,42 +527,54 @@ export default function AdminProsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
   header: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.sm,
   },
-  title: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.textPrimary },
-  count: { fontSize: FontSize.sm, color: Colors.textMuted, marginTop: 2 },
+  title: {
+    fontSize: FontSize.xxl,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+  subtitle: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
 
-  // Policy
-  policyCard: {
-    marginHorizontal: Spacing.lg,
+  // Search
+  searchWrap: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    gap: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  policyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  policyDot: { width: 10, height: 10, borderRadius: 5 },
-  policyText: { fontSize: FontSize.xs, color: Colors.textSecondary },
-
-  // Tabs
-  tabRow: { paddingHorizontal: Spacing.lg, gap: Spacing.sm, paddingVertical: Spacing.sm },
-  tab: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.offWhite,
+  searchInput: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.textPrimary,
+    paddingVertical: 0,
   },
-  tabActive: { backgroundColor: Colors.primary },
-  tabText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textSecondary },
-  tabTextActive: { color: Colors.white },
 
   // List
-  list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xxl },
+  list: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xxl,
+  },
   card: {
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.lg,
@@ -587,10 +589,17 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  proInfo: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  avatarContainer: { position: 'relative' },
+  proInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
   avatar: {
     width: 46,
     height: 46,
@@ -609,29 +618,42 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.white,
   },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  newcomerTag: {
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 1,
-    paddingHorizontal: 6,
-    borderRadius: BorderRadius.full,
+  proName: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.textPrimary,
   },
-  newcomerTagText: { fontSize: 10, fontWeight: '700', color: '#3B82F6' },
-  proName: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  ratingText: { fontSize: FontSize.xs, fontWeight: '600' },
-  statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: BorderRadius.full },
-  statusText: { fontSize: FontSize.xs, fontWeight: '600' },
-
-  // Categories
-  categories: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: Spacing.md },
-  categoryTag: {
-    backgroundColor: Colors.primaryFaint,
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 4,
+  },
+  ratingText: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  reviewCount: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  statusBadges: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingVertical: 3,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderRadius: BorderRadius.full,
   },
-  categoryTagText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '600' },
+  statusText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+  },
 
   // Stats
   statsRow: {
@@ -641,49 +663,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
   },
-  stat: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
-  statLabel: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: Colors.borderLight },
-
-  // Actions
-  actionBtn: {
-    flexDirection: 'row',
+  stat: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: Spacing.md,
-    paddingVertical: 10,
-    backgroundColor: '#FEF3C7',
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: '#F59E0B40',
   },
-  actionBtnText: { fontSize: FontSize.sm, fontWeight: '600', color: '#92400E' },
-  improvementInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: Spacing.md,
-    paddingVertical: 8,
-    paddingHorizontal: Spacing.md,
-    backgroundColor: '#FEF3C7',
-    borderRadius: BorderRadius.md,
+  statValue: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.textPrimary,
   },
-  improvementInfoText: { fontSize: FontSize.xs, color: '#92400E', fontWeight: '500' },
-  removeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: Spacing.md,
-    paddingVertical: 10,
-    backgroundColor: Colors.error + '10',
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.error + '30',
+  statLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
-  removeBtnText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.error },
+  statDivider: {
+    width: 1,
+    backgroundColor: Colors.borderLight,
+  },
 
   // Modal
   modalOverlay: {
@@ -695,40 +692,160 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderTopLeftRadius: BorderRadius.xl,
     borderTopRightRadius: BorderRadius.xl,
-    padding: Spacing.lg,
+    maxHeight: '85%',
     paddingBottom: Spacing.xxl,
-    maxHeight: '70%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
+    padding: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  modalTitle: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.textPrimary },
-  modalSection: { marginBottom: Spacing.lg },
+  modalTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+  modalSection: {
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+  },
   modalSectionTitle: {
     fontSize: FontSize.md,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
-  modalStatRow: {
+  modalInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
   },
-  modalStatLabel: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  modalStatValue: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textPrimary },
-  modalDetailText: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 4 },
-  modalActions: { gap: Spacing.sm },
-  modalActionBtn: {
+  modalInfoLabel: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  modalInfoValue: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    flexShrink: 1,
+    textAlign: 'right',
+    maxWidth: '60%',
+  },
+
+  // Mystery Shop Score
+  scoreWrap: {
+    gap: Spacing.md,
+  },
+  scoreCircle: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  scoreValue: {
+    fontSize: FontSize.xxxl,
+    fontWeight: '800',
+  },
+  scoreMax: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+  },
+  scoreBarContainer: {
+    marginTop: Spacing.xs,
+  },
+  scoreBarBg: {
+    height: 8,
+    backgroundColor: Colors.borderLight,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  scoreBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  noDataText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+  },
+
+  // Improvement Plan
+  improvementCard: {
+    backgroundColor: Colors.offWhite,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.xs,
+  },
+  improvementHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  improvementStatus: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  improvementDetail: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    marginLeft: 26,
+  },
+
+  // Actions
+  modalActions: {
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  actionBtnPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
     paddingVertical: 14,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.warning,
     borderRadius: BorderRadius.md,
   },
-  modalActionBtnText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.white },
-  modalActionBtnDanger: { backgroundColor: Colors.error },
-  modalActionBtnDangerText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.white },
+  actionBtnPrimaryText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  actionBtnDanger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: 14,
+    backgroundColor: Colors.error + '10',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.error + '30',
+  },
+  actionBtnDangerText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.error,
+  },
+  actionBtnBoost: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: 14,
+    backgroundColor: Colors.primaryFaint,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.primaryMedium + '30',
+  },
+  actionBtnBoostText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.primaryMedium,
+  },
 });
