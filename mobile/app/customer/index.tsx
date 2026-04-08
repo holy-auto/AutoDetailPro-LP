@@ -141,6 +141,11 @@ export default function CustomerHome() {
     router.push('/customer/booking/schedule' as any);
   };
 
+  const handleSubscription = () => {
+    if (!requireAuth()) return;
+    router.push('/customer/subscription' as any);
+  };
+
   const handleRecenter = () => {
     mapRef.current?.animateToRegion(
       {
@@ -392,15 +397,25 @@ export default function CustomerHome() {
         </View>
       </ScrollView>
 
-      {/* Schedule button */}
-      <TouchableOpacity
-        style={styles.scheduleButton}
-        activeOpacity={0.85}
-        onPress={handleScheduleBooking}
-      >
-        <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
-        <Text style={styles.scheduleButtonText}>日時予約</Text>
-      </TouchableOpacity>
+      {/* Bottom action buttons */}
+      <View style={styles.bottomActions}>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          activeOpacity={0.85}
+          onPress={handleScheduleBooking}
+        >
+          <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
+          <Text style={styles.secondaryButtonText}>日時予約</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          activeOpacity={0.85}
+          onPress={handleSubscription}
+        >
+          <Ionicons name="repeat-outline" size={18} color={Colors.success} />
+          <Text style={[styles.secondaryButtonText, { color: Colors.success }]}>定期コース</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* FAB - Call Pro Button (Go style) */}
       <TouchableOpacity
@@ -702,27 +717,32 @@ const styles = StyleSheet.create({
     color: Colors.primaryMedium,
   },
 
-  // Schedule button
-  scheduleButton: {
+  // Bottom action buttons
+  bottomActions: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 100,
     left: Spacing.lg,
+    right: Spacing.lg,
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.white,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: BorderRadius.full,
-    gap: 6,
+    gap: 5,
     shadowColor: Colors.shadowDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
-  scheduleButtonText: {
+  secondaryButtonText: {
     fontSize: FontSize.sm,
     fontWeight: '700',
     color: Colors.primary,

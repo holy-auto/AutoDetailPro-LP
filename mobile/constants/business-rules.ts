@@ -367,6 +367,7 @@ export const GIFT = {
 // --- Subscription (定期依頼) ---
 export const SUBSCRIPTION = {
   PLANS: [
+    { id: 'weekly', name: '週1回コース', intervalDays: 7, discount: 15, label: '15%OFF' },
     { id: 'bi_weekly', name: '隔週コース', intervalDays: 14, discount: 10, label: '10%OFF' },
     { id: 'monthly', name: '月1回コース', intervalDays: 30, discount: 5, label: '5%OFF' },
     { id: 'bi_monthly', name: '隔月コース', intervalDays: 60, discount: 3, label: '3%OFF' },
