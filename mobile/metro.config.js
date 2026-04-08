@@ -3,14 +3,17 @@ const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
+const nativeOnlyModules = [
+  'react-native-maps',
+];
+
 // On web, redirect native-only modules to web shims
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (platform === 'web' && moduleName === 'react-native-maps') {
-    return {
-      filePath: path.resolve(__dirname, 'shims/react-native-maps.tsx'),
-      type: 'sourceFile',
-    };
+  if (platform === 'web' && nativeOnlyModules.includes(moduleName)) {
+    const shimPath = path.resolve(__dirname, 'shims', moduleName + '.tsx');
+    return { filePath: shimPath, type: 'sourceFile' };
   }
+  // Let Metro handle everything else
   return context.resolveRequest(context, moduleName, platform);
 };
 
