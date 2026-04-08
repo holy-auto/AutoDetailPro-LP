@@ -6,19 +6,27 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  FlatList,
   Dimensions,
+  ActivityIndicator,
   Platform,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE, Circle } from 'react-native-maps';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
 import { SERVICE_CATEGORIES } from '@/constants/categories';
+import { MATCHING } from '@/constants/business-rules';
 import { useAuth } from '../_layout';
+import {
+  getCurrentLocation,
+  DEFAULT_LOCATION,
+  type Coords,
+} from '@/lib/location';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const MAP_HEIGHT = 280;
 
-// Mock nearby pros
+// Mock nearby pros with coordinates
 const MOCK_PROS = [
   {
     id: '1',
@@ -28,7 +36,8 @@ const MOCK_PROS = [
     distance: '0.8km',
     eta: '5分',
     speciality: '外装洗車',
-    avatar: null,
+    latitude: 35.6842,
+    longitude: 139.7645,
     online: true,
   },
   {
@@ -39,7 +48,8 @@ const MOCK_PROS = [
     distance: '1.2km',
     eta: '8分',
     speciality: 'コーティング',
-    avatar: null,
+    latitude: 35.6795,
+    longitude: 139.7710,
     online: true,
   },
   {
@@ -50,7 +60,8 @@ const MOCK_PROS = [
     distance: '2.1km',
     eta: '12分',
     speciality: 'フルディテイル',
-    avatar: null,
+    latitude: 35.6762,
+    longitude: 139.7580,
     online: true,
   },
 ];
@@ -67,6 +78,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 export default function CustomerHome() {
   const router = useRouter();
   const { user, isGuest, requireAuth } = useAuth();
+  const mapRef = useRef<MapView>(null);
   const userName = isGuest
     ? 'ゲスト'
     : user?.user_metadata?.full_name ||
@@ -75,10 +87,36 @@ export default function CustomerHome() {
       'ユーザー';
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<Coords>(DEFAULT_LOCATION);
+  const [loadingLocation, setLoadingLocation] = useState(true);
+  const [selectedProId, setSelectedProId] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const coords = await getCurrentLocation();
+      setUserLocation(coords);
+      setLoadingLocation(false);
+    })();
+  }, []);
 
   const handleCallPro = () => {
     if (!requireAuth()) return;
-    // TODO: Navigate to booking flow
+    router.push('/customer/booking/select-menu');
+  };
+
+  const handleRecenter = () => {
+    mapRef.current?.animateToRegion(
+      {
+        ...userLocation,
+        latitudeDelta: 0.025,
+        longitudeDelta: 0.025,
+      },
+      500
+    );
+  };
+
+  const handleProMarkerPress = (proId: string) => {
+    setSelectedProId(selectedProId === proId ? null : proId);
   };
 
   return (
@@ -103,19 +141,82 @@ export default function CustomerHome() {
           </TouchableOpacity>
         </View>
 
-        {/* Map Placeholder */}
+        {/* Map */}
         <View style={styles.mapContainer}>
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="map" size={48} color={Colors.primarySoft} />
-            <Text style={styles.mapText}>周辺のプロを表示中...</Text>
-            <Text style={styles.mapSubtext}>
-              3名のプロがオンライン
-            </Text>
-          </View>
+          {loadingLocation ? (
+            <View style={styles.mapLoading}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={styles.mapLoadingText}>位置情報を取得中...</Text>
+            </View>
+          ) : (
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+              initialRegion={{
+                ...userLocation,
+                latitudeDelta: 0.025,
+                longitudeDelta: 0.025,
+              }}
+              showsUserLocation
+              showsMyLocationButton={false}
+              mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
+            >
+              {/* 15km matching radius circle */}
+              <Circle
+                center={userLocation}
+                radius={MATCHING.BASE_RADIUS_KM * 1000}
+                strokeColor={Colors.primarySoft + '40'}
+                fillColor={Colors.primaryFaint + '20'}
+                strokeWidth={1}
+              />
 
-          {/* Current Location Pin */}
-          <View style={styles.locationPin}>
+              {/* Pro markers */}
+              {MOCK_PROS.map((pro) => (
+                <Marker
+                  key={pro.id}
+                  coordinate={{
+                    latitude: pro.latitude,
+                    longitude: pro.longitude,
+                  }}
+                  onPress={() => handleProMarkerPress(pro.id)}
+                  anchor={{ x: 0.5, y: 0.5 }}
+                >
+                  <View
+                    style={[
+                      styles.proMarker,
+                      selectedProId === pro.id && styles.proMarkerSelected,
+                    ]}
+                  >
+                    <Ionicons
+                      name="construct"
+                      size={16}
+                      color={
+                        selectedProId === pro.id
+                          ? Colors.white
+                          : Colors.primary
+                      }
+                    />
+                  </View>
+                </Marker>
+              ))}
+            </MapView>
+          )}
+
+          {/* Recenter button */}
+          <TouchableOpacity
+            style={styles.recenterButton}
+            onPress={handleRecenter}
+          >
             <Ionicons name="navigate" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+
+          {/* Online count badge */}
+          <View style={styles.onlineCountBadge}>
+            <View style={styles.onlinePulse} />
+            <Text style={styles.onlineCountText}>
+              {MOCK_PROS.length}名のプロがオンライン
+            </Text>
           </View>
         </View>
 
@@ -144,9 +245,7 @@ export default function CustomerHome() {
                   name={CATEGORY_ICONS[cat.id] as any}
                   size={18}
                   color={
-                    selectedCategory === cat.id
-                      ? Colors.white
-                      : Colors.primary
+                    selectedCategory === cat.id ? Colors.white : Colors.primary
                   }
                 />
                 <Text
@@ -173,7 +272,25 @@ export default function CustomerHome() {
           </View>
 
           {MOCK_PROS.map((pro) => (
-            <TouchableOpacity key={pro.id} style={styles.proCard}>
+            <TouchableOpacity
+              key={pro.id}
+              style={[
+                styles.proCard,
+                selectedProId === pro.id && styles.proCardSelected,
+              ]}
+              onPress={() => {
+                setSelectedProId(pro.id);
+                mapRef.current?.animateToRegion(
+                  {
+                    latitude: pro.latitude,
+                    longitude: pro.longitude,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  },
+                  500
+                );
+              }}
+            >
               <View style={styles.proAvatar}>
                 <Ionicons name="person" size={24} color={Colors.primaryMedium} />
                 <View style={styles.onlineDot} />
@@ -205,7 +322,11 @@ export default function CustomerHome() {
       </ScrollView>
 
       {/* FAB - Call Pro Button (Go style) */}
-      <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={handleCallPro}>
+      <TouchableOpacity
+        style={styles.fab}
+        activeOpacity={0.85}
+        onPress={handleCallPro}
+      >
         <Ionicons name="car-sport" size={24} color={Colors.white} />
         <Text style={styles.fabText}>プロを呼ぶ</Text>
       </TouchableOpacity>
@@ -259,42 +380,90 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
     position: 'relative',
+    height: MAP_HEIGHT,
   },
-  mapPlaceholder: {
-    height: 200,
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  mapLoading: {
+    width: '100%',
+    height: '100%',
     backgroundColor: Colors.primaryFaint,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.primaryPale,
   },
-  mapText: {
-    fontSize: FontSize.md,
+  mapLoadingText: {
+    fontSize: FontSize.sm,
     color: Colors.primaryMedium,
-    fontWeight: '600',
     marginTop: Spacing.sm,
   },
-  mapSubtext: {
-    fontSize: FontSize.sm,
-    color: Colors.primarySoft,
-    marginTop: Spacing.xs,
-  },
-  locationPin: {
+  recenterButton: {
     position: 'absolute',
     bottom: Spacing.md,
     right: Spacing.md,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.white,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: Colors.shadowDark,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  onlineCountBadge: {
+    position: 'absolute',
+    top: Spacing.md,
+    left: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: BorderRadius.full,
+    gap: 6,
+    shadowColor: Colors.shadowDark,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  onlinePulse: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.success,
+  },
+  onlineCountText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+
+  // Pro Markers
+  proMarker: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    shadowColor: Colors.shadowDark,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  proMarkerSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primaryLight,
+    transform: [{ scale: 1.2 }],
   },
 
   // Sections
@@ -355,11 +524,17 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.sm,
+    borderWidth: 2,
+    borderColor: 'transparent',
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  proCardSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryFaint,
   },
   proAvatar: {
     width: 50,

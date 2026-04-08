@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,9 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
@@ -15,23 +17,28 @@ import {
   CUSTOMER_TRACKER_STEPS,
   CANCELLATION,
   COMPLETION,
-  ORDER_STATUS,
   type OrderStatus,
 } from '@/constants/business-rules';
+import { DEFAULT_LOCATION, type Coords } from '@/lib/location';
 
-// Status progression for simulation
-const STATUS_FLOW: OrderStatus[] = [
-  'payment_authorized',
-  'requested',
-  'accepted',
-  'on_the_way',
-  'arrived',
-  'in_progress',
-  'pro_marked_done',
+// Simulate pro movement path
+const PRO_PATH: Coords[] = [
+  { latitude: 35.6862, longitude: 139.7645 },
+  { latitude: 35.6852, longitude: 139.7650 },
+  { latitude: 35.6842, longitude: 139.7655 },
+  { latitude: 35.6832, longitude: 139.7660 },
+  { latitude: 35.6822, longitude: 139.7665 },
+  { latitude: 35.6812, longitude: 139.7671 }, // destination (customer)
 ];
+
+const CUSTOMER_LOCATION: Coords = {
+  latitude: 35.6812,
+  longitude: 139.7671,
+};
 
 export default function TrackingScreen() {
   const router = useRouter();
+  const mapRef = useRef<MapView>(null);
   const params = useLocalSearchParams<{
     proName: string;
     totalPrice: string;
@@ -41,20 +48,68 @@ export default function TrackingScreen() {
 
   const totalPrice = parseInt(params.totalPrice ?? '0', 10);
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>('accepted');
+  const [proLocation, setProLocation] = useState<Coords>(PRO_PATH[0]);
+  const [proPathIndex, setProPathIndex] = useState(0);
   const [eta, setEta] = useState('5分');
-  const [confirmTimeout, setConfirmTimeout] = useState(COMPLETION.CONFIRMATION_TIMEOUT_MIN * 60);
+  const [confirmTimeout, setConfirmTimeout] = useState(
+    COMPLETION.CONFIRMATION_TIMEOUT_MIN * 60
+  );
 
-  // Simulate status progression
+  // Simulate pro movement
+  useEffect(() => {
+    if (currentStatus !== 'on_the_way') return;
+
+    const interval = setInterval(() => {
+      setProPathIndex((prev) => {
+        const next = prev + 1;
+        if (next >= PRO_PATH.length) {
+          clearInterval(interval);
+          return prev;
+        }
+        setProLocation(PRO_PATH[next]);
+        setEta(`${PRO_PATH.length - next - 1}分`);
+
+        // Animate map camera to follow pro
+        mapRef.current?.animateToRegion(
+          {
+            latitude:
+              (PRO_PATH[next].latitude + CUSTOMER_LOCATION.latitude) / 2,
+            longitude:
+              (PRO_PATH[next].longitude + CUSTOMER_LOCATION.longitude) / 2,
+            latitudeDelta: 0.015,
+            longitudeDelta: 0.015,
+          },
+          800
+        );
+
+        return next;
+      });
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [currentStatus]);
+
+  // Status progression simulation
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(setTimeout(() => { setCurrentStatus('on_the_way'); setEta('3分'); }, 3000));
-    timers.push(setTimeout(() => { setCurrentStatus('arrived'); setEta('到着'); }, 8000));
-    timers.push(setTimeout(() => setCurrentStatus('in_progress'), 12000));
-    timers.push(setTimeout(() => setCurrentStatus('pro_marked_done'), 18000));
+    timers.push(
+      setTimeout(() => {
+        setCurrentStatus('on_the_way');
+        setEta('5分');
+      }, 2000)
+    );
+    timers.push(
+      setTimeout(() => {
+        setCurrentStatus('arrived');
+        setEta('到着');
+      }, 14000)
+    );
+    timers.push(setTimeout(() => setCurrentStatus('in_progress'), 18000));
+    timers.push(setTimeout(() => setCurrentStatus('pro_marked_done'), 24000));
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  // Auto-complete countdown when pro marks done
+  // Auto-complete countdown
   useEffect(() => {
     if (currentStatus !== 'pro_marked_done') return;
     const timer = setInterval(() => {
@@ -95,7 +150,6 @@ export default function TrackingScreen() {
   };
 
   const handleCancel = () => {
-    // Determine fee based on current status
     let message = '';
     if (['payment_authorized', 'requested'].includes(currentStatus)) {
       message = 'プロ承認前のため無料でキャンセルできます。';
@@ -118,9 +172,13 @@ export default function TrackingScreen() {
   const currentStepIndex = CUSTOMER_TRACKER_STEPS.findIndex(
     (step) => step.status === currentStatus
   );
-
   const confirmMin = Math.floor(confirmTimeout / 60);
   const confirmSec = confirmTimeout % 60;
+
+  const showMap =
+    currentStatus === 'accepted' ||
+    currentStatus === 'on_the_way' ||
+    currentStatus === 'arrived';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -131,16 +189,102 @@ export default function TrackingScreen() {
           <Text style={styles.subtitle}>{params.proName}</Text>
         </View>
 
-        {/* Map Placeholder */}
-        <View style={styles.mapPlaceholder}>
-          <Ionicons name="navigate" size={32} color={Colors.primarySoft} />
-          <Text style={styles.mapText}>
-            {currentStatus === 'on_the_way' && `到着まで約${eta}`}
-            {currentStatus === 'arrived' && 'プロが到着しました'}
-            {currentStatus === 'in_progress' && '作業中...'}
-            {currentStatus === 'pro_marked_done' && '完了確認をお願いします'}
-            {currentStatus === 'accepted' && 'プロが移動を開始します'}
-          </Text>
+        {/* Live Map */}
+        <View style={styles.mapContainer}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+            initialRegion={{
+              latitude:
+                (proLocation.latitude + CUSTOMER_LOCATION.latitude) / 2,
+              longitude:
+                (proLocation.longitude + CUSTOMER_LOCATION.longitude) / 2,
+              latitudeDelta: 0.015,
+              longitudeDelta: 0.015,
+            }}
+            showsUserLocation={false}
+          >
+            {/* Customer marker */}
+            <Marker coordinate={CUSTOMER_LOCATION} anchor={{ x: 0.5, y: 0.5 }}>
+              <View style={styles.customerMarker}>
+                <Ionicons name="location" size={18} color={Colors.primary} />
+              </View>
+            </Marker>
+
+            {/* Pro marker */}
+            {showMap && (
+              <Marker
+                coordinate={proLocation}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View style={styles.proMovingMarker}>
+                  <Ionicons name="car-sport" size={18} color={Colors.white} />
+                </View>
+              </Marker>
+            )}
+
+            {/* Route line */}
+            {showMap && (
+              <Polyline
+                coordinates={[proLocation, CUSTOMER_LOCATION]}
+                strokeColor={Colors.primary}
+                strokeWidth={3}
+                lineDashPattern={[6, 4]}
+              />
+            )}
+
+            {/* Work in progress / done marker */}
+            {(currentStatus === 'in_progress' ||
+              currentStatus === 'pro_marked_done') && (
+              <Marker
+                coordinate={CUSTOMER_LOCATION}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View style={styles.workMarker}>
+                  <Ionicons
+                    name={
+                      currentStatus === 'pro_marked_done'
+                        ? 'checkmark-circle'
+                        : 'construct'
+                    }
+                    size={22}
+                    color={Colors.white}
+                  />
+                </View>
+              </Marker>
+            )}
+          </MapView>
+
+          {/* ETA overlay */}
+          {showMap && (
+            <View style={styles.etaOverlay}>
+              <Text style={styles.etaLabel}>
+                {currentStatus === 'arrived' ? 'プロ到着' : '到着予定'}
+              </Text>
+              <Text style={styles.etaValue}>{eta}</Text>
+            </View>
+          )}
+
+          {/* Status overlay */}
+          {!showMap && (
+            <View style={styles.statusOverlay}>
+              <Ionicons
+                name={
+                  currentStatus === 'in_progress'
+                    ? 'construct'
+                    : 'clipboard-outline'
+                }
+                size={28}
+                color={Colors.primaryMedium}
+              />
+              <Text style={styles.statusOverlayText}>
+                {currentStatus === 'in_progress'
+                  ? '作業中...'
+                  : '完了確認をお願いします'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Status Tracker */}
@@ -160,7 +304,11 @@ export default function TrackingScreen() {
                     ]}
                   >
                     {isCompleted ? (
-                      <Ionicons name="checkmark" size={12} color={Colors.white} />
+                      <Ionicons
+                        name="checkmark"
+                        size={12}
+                        color={Colors.white}
+                      />
                     ) : (
                       <Ionicons
                         name={step.icon as any}
@@ -194,25 +342,35 @@ export default function TrackingScreen() {
 
         {/* Pro Marked Done — confirm or auto-complete */}
         {currentStatus === 'pro_marked_done' && (
-          <View style={styles.confirmSection}>
-            <View style={styles.confirmCard}>
-              <Ionicons name="clipboard-outline" size={28} color={Colors.primary} />
-              <Text style={styles.confirmTitle}>プロが作業完了を報告しました</Text>
-              <Text style={styles.confirmDesc}>
-                作業内容を確認して完了ボタンを押してください。
-                {'\n'}未確認の場合、{COMPLETION.CONFIRMATION_TIMEOUT_MIN}分後に自動完了します。
-              </Text>
-              <Text style={styles.confirmTimer}>
-                自動完了まで {confirmMin}:{confirmSec.toString().padStart(2, '0')}
-              </Text>
-              <TouchableOpacity
-                style={styles.completeBtn}
-                onPress={handleConfirmComplete}
-              >
-                <Ionicons name="checkmark-circle" size={22} color={Colors.white} />
-                <Text style={styles.completeBtnText}>作業完了を確認</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.confirmCard}>
+            <Ionicons
+              name="clipboard-outline"
+              size={28}
+              color={Colors.primary}
+            />
+            <Text style={styles.confirmTitle}>
+              プロが作業完了を報告しました
+            </Text>
+            <Text style={styles.confirmDesc}>
+              作業内容を確認して完了ボタンを押してください。{'\n'}
+              未確認の場合、{COMPLETION.CONFIRMATION_TIMEOUT_MIN}
+              分後に自動完了します。
+            </Text>
+            <Text style={styles.confirmTimer}>
+              自動完了まで {confirmMin}:
+              {confirmSec.toString().padStart(2, '0')}
+            </Text>
+            <TouchableOpacity
+              style={styles.completeBtn}
+              onPress={handleConfirmComplete}
+            >
+              <Ionicons
+                name="checkmark-circle"
+                size={22}
+                color={Colors.white}
+              />
+              <Text style={styles.completeBtnText}>作業完了を確認</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -220,12 +378,16 @@ export default function TrackingScreen() {
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>お支払い金額</Text>
-            <Text style={styles.infoValue}>¥{totalPrice.toLocaleString()}</Text>
+            <Text style={styles.infoValue}>
+              ¥{totalPrice.toLocaleString()}
+            </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>決済方法</Text>
             <Text style={styles.infoValue}>
-              {params.paymentMethod === 'online' ? 'オンライン決済' : '現金決済'}
+              {params.paymentMethod === 'online'
+                ? 'オンライン決済'
+                : '現金決済'}
             </Text>
           </View>
         </View>
@@ -245,80 +407,250 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
   header: { marginBottom: Spacing.md },
-  title: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.textPrimary },
-  subtitle: { fontSize: FontSize.md, color: Colors.primaryMedium, fontWeight: '600', marginTop: 2 },
-  mapPlaceholder: {
-    height: 160, backgroundColor: Colors.primaryFaint, borderRadius: BorderRadius.lg,
-    justifyContent: 'center', alignItems: 'center', borderWidth: 1,
-    borderColor: Colors.primaryPale, marginBottom: Spacing.lg,
+  title: {
+    fontSize: FontSize.xxl,
+    fontWeight: '800',
+    color: Colors.textPrimary,
   },
-  mapText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.primaryMedium, marginTop: Spacing.sm },
+  subtitle: {
+    fontSize: FontSize.md,
+    color: Colors.primaryMedium,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+
+  // Map
+  mapContainer: {
+    height: 240,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: Spacing.md,
+    position: 'relative',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  customerMarker: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  proMovingMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Colors.white,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  workMarker: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.success,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Colors.white,
+    shadowColor: Colors.success,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  etaOverlay: {
+    position: 'absolute',
+    top: Spacing.md,
+    right: Spacing.md,
+    backgroundColor: Colors.white,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  etaLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  etaValue: {
+    fontSize: FontSize.xl,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  statusOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.primaryFaint + 'CC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  statusOverlayText: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.primaryMedium,
+  },
+
   // Tracker
   tracker: {
-    backgroundColor: Colors.card, borderRadius: BorderRadius.lg, padding: Spacing.lg,
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
     marginBottom: Spacing.md,
-    shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1, shadowRadius: 8, elevation: 3,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  trackerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
+  trackerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
+  },
   trackerLeft: { alignItems: 'center', width: 28 },
   trackerDot: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.borderLight,
-    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: Colors.border,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.border,
   },
-  trackerDotCompleted: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  trackerDotCompleted: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
   trackerDotCurrent: {
-    backgroundColor: Colors.primary, borderColor: Colors.primaryPale, borderWidth: 3,
-    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primaryPale,
+    borderWidth: 3,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   trackerLine: {
-    width: 2, height: 24, backgroundColor: Colors.border, marginVertical: 2,
+    width: 2,
+    height: 24,
+    backgroundColor: Colors.border,
+    marginVertical: 2,
   },
   trackerLineCompleted: { backgroundColor: Colors.primary },
   trackerLabel: {
-    fontSize: FontSize.md, color: Colors.textMuted, paddingTop: 4,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+    paddingTop: 4,
   },
   trackerLabelCurrent: { color: Colors.primary, fontWeight: '700' },
   trackerLabelCompleted: { color: Colors.textSecondary },
+
   // Confirm
-  confirmSection: { marginBottom: Spacing.md },
   confirmCard: {
-    backgroundColor: Colors.primaryFaint, borderRadius: BorderRadius.lg,
-    padding: Spacing.lg, alignItems: 'center', borderWidth: 1,
+    backgroundColor: Colors.primaryFaint,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    alignItems: 'center',
+    borderWidth: 1,
     borderColor: Colors.primaryPale,
+    marginBottom: Spacing.md,
   },
   confirmTitle: {
-    fontSize: FontSize.lg, fontWeight: '700', color: Colors.primary,
-    marginTop: Spacing.sm, textAlign: 'center',
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginTop: Spacing.sm,
+    textAlign: 'center',
   },
   confirmDesc: {
-    fontSize: FontSize.sm, color: Colors.primaryMedium, textAlign: 'center',
-    marginTop: Spacing.sm, lineHeight: 20,
+    fontSize: FontSize.sm,
+    color: Colors.primaryMedium,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+    lineHeight: 20,
   },
   confirmTimer: {
-    fontSize: FontSize.xxl, fontWeight: '800', color: Colors.primary,
-    marginTop: Spacing.md, fontVariant: ['tabular-nums'],
+    fontSize: FontSize.xxl,
+    fontWeight: '800',
+    color: Colors.primary,
+    marginTop: Spacing.md,
+    fontVariant: ['tabular-nums'],
   },
   completeBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.success, paddingVertical: 14, paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.md, marginTop: Spacing.md, gap: Spacing.sm, width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.success,
+    paddingVertical: 14,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+    width: '100%',
   },
-  completeBtnText: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.white },
+  completeBtnText: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+
   // Info
   infoCard: {
-    backgroundColor: Colors.card, borderRadius: BorderRadius.md, padding: Spacing.lg,
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.lg,
     marginBottom: Spacing.md,
-    shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 1, shadowRadius: 4, elevation: 2,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   infoRow: {
-    flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.sm,
   },
   infoLabel: { fontSize: FontSize.md, color: Colors.textSecondary },
-  infoValue: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
-  cancelBtn: {
-    alignItems: 'center', paddingVertical: Spacing.md,
+  infoValue: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.textPrimary,
   },
-  cancelBtnText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.error },
+  cancelBtn: {
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+  },
+  cancelBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    color: Colors.error,
+  },
 });

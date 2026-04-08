@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,19 @@ import {
   SafeAreaView,
   ScrollView,
   Switch,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
 import { useAuth } from '../_layout';
 import { signOut } from '@/lib/auth';
+import {
+  getCurrentLocation,
+  watchPosition,
+  updateProLocation,
+  setProOnlineStatus,
+  type Coords,
+} from '@/lib/location';
 
 const MOCK_STATS = {
   todayEarnings: 18000,
@@ -44,11 +52,57 @@ const MOCK_RECENT_JOBS = [
 export default function ProHome() {
   const { user } = useAuth();
   const [isOnline, setIsOnline] = useState(false);
+  const [currentCoords, setCurrentCoords] = useState<Coords | null>(null);
+  const watchRef = useRef<{ remove: () => void } | null>(null);
+
+  const proId = user?.id;
 
   const userName =
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     'プロ';
+
+  const handleToggleOnline = useCallback(
+    async (value: boolean) => {
+      if (!proId) return;
+
+      if (value) {
+        try {
+          const coords = await getCurrentLocation();
+          setCurrentCoords(coords);
+
+          await setProOnlineStatus(proId, true, coords);
+
+          watchRef.current = watchPosition((newCoords) => {
+            setCurrentCoords(newCoords);
+            updateProLocation(proId, newCoords);
+          }, 5000);
+
+          setIsOnline(true);
+        } catch {
+          Alert.alert('位置情報エラー', 'GPSの取得に失敗しました。設定を確認してください。');
+        }
+      } else {
+        watchRef.current?.remove();
+        watchRef.current = null;
+        setCurrentCoords(null);
+
+        await setProOnlineStatus(proId, false);
+        setIsOnline(false);
+      }
+    },
+    [proId]
+  );
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      watchRef.current?.remove();
+      if (proId && isOnline) {
+        setProOnlineStatus(proId, false);
+      }
+    };
+  }, [proId, isOnline]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -89,7 +143,7 @@ export default function ProHome() {
           </View>
           <Switch
             value={isOnline}
-            onValueChange={setIsOnline}
+            onValueChange={handleToggleOnline}
             trackColor={{
               false: Colors.border,
               true: Colors.primarySoft,
@@ -97,6 +151,16 @@ export default function ProHome() {
             thumbColor={isOnline ? Colors.primary : Colors.textMuted}
           />
         </View>
+
+        {/* GPS Coordinates */}
+        {isOnline && currentCoords && (
+          <View style={styles.coordsRow}>
+            <Ionicons name="navigate" size={14} color={Colors.primaryMedium} />
+            <Text style={styles.coordsText}>
+              {currentCoords.latitude.toFixed(4)}, {currentCoords.longitude.toFixed(4)}
+            </Text>
+          </View>
+        )}
 
         {/* Today's Stats */}
         <View style={styles.statsGrid}>
@@ -249,6 +313,18 @@ const styles = StyleSheet.create({
   },
   gpsSubtitleOnline: {
     color: Colors.primaryMedium,
+  },
+  coordsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.sm,
+  },
+  coordsText: {
+    fontSize: FontSize.xs,
+    color: Colors.primaryMedium,
+    fontWeight: '500',
   },
   statsGrid: {
     flexDirection: 'row',
