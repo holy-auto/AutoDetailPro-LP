@@ -329,3 +329,62 @@ export const IMPROVEMENT_STATUS = {
 
 export type ImprovementStatus =
   (typeof IMPROVEMENT_STATUS)[keyof typeof IMPROVEMENT_STATUS];
+
+// --- Loyalty & Points ---
+export const LOYALTY = {
+  POINTS_PER_YEN: 0.01,          // ¥100 = 1pt
+  POINTS_TO_YEN: 100,            // 1pt = ¥100 還元
+  WELCOME_BONUS: 500,            // 新規登録500pt
+  REFERRAL_BONUS: 300,           // 紹介ボーナス300pt
+  REVIEW_BONUS: 50,              // レビュー投稿50pt
+  TIERS: [
+    { id: 'bronze', name: 'ブロンズ', minPoints: 0, discount: 0, color: '#CD7F32' },
+    { id: 'silver', name: 'シルバー', minPoints: 3000, discount: 3, color: '#C0C0C0' },
+    { id: 'gold', name: 'ゴールド', minPoints: 10000, discount: 5, color: '#FFD700' },
+    { id: 'platinum', name: 'プラチナ', minPoints: 30000, discount: 8, color: '#E5E4E2' },
+  ],
+} as const;
+
+export type LoyaltyTier = (typeof LOYALTY.TIERS)[number]['id'];
+
+// --- Coupons ---
+export const COUPON_TYPES = {
+  PERCENT: 'percent',
+  FIXED: 'fixed',
+  FREE_SERVICE: 'free_service',
+} as const;
+
+export type CouponType = (typeof COUPON_TYPES)[keyof typeof COUPON_TYPES];
+
+// --- Gift ---
+export const GIFT = {
+  MIN_AMOUNT: 3000,
+  MAX_AMOUNT: 100000,
+  EXPIRY_DAYS: 90,               // ギフト有効期限90日
+  MESSAGE_MAX_LENGTH: 200,
+} as const;
+
+// --- Subscription (定期依頼) ---
+export const SUBSCRIPTION = {
+  PLANS: [
+    { id: 'bi_weekly', name: '隔週コース', intervalDays: 14, discount: 10, label: '10%OFF' },
+    { id: 'monthly', name: '月1回コース', intervalDays: 30, discount: 5, label: '5%OFF' },
+    { id: 'bi_monthly', name: '隔月コース', intervalDays: 60, discount: 3, label: '3%OFF' },
+  ],
+  // キャンセルは次回予約日の48時間前まで
+  CANCEL_BEFORE_HOURS: 48,
+  // 最低継続回数
+  MIN_COMMITMENT: 1,
+} as const;
+
+export type SubscriptionPlanId = (typeof SUBSCRIPTION.PLANS)[number]['id'];
+
+// --- Scheduled Booking (先日程予約) ---
+export const SCHEDULED_BOOKING = {
+  MIN_ADVANCE_HOURS: 2,          // 最低2時間先
+  MAX_ADVANCE_DAYS: 30,          // 最大30日先
+  TIME_SLOTS: [
+    '09:00', '10:00', '11:00', '12:00', '13:00',
+    '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
+  ],
+} as const;

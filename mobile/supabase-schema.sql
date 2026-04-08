@@ -380,7 +380,186 @@ CREATE POLICY "Admins can manage plans" ON improvement_plans FOR ALL USING (
 );
 
 -- ============================================
--- 12. Realtime subscriptions
+-- 12. Loyalty Accounts (ポイント管理)
+-- ============================================
+CREATE TABLE loyalty_accounts (
+  id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  total_points INT NOT NULL DEFAULT 0,
+  tier TEXT NOT NULL DEFAULT 'bronze' CHECK (tier IN ('bronze', 'silver', 'gold', 'platinum')),
+  lifetime_points INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE loyalty_accounts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Customers can view own loyalty account" ON loyalty_accounts FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Customers can insert own loyalty account" ON loyalty_accounts FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Customers can update own loyalty account" ON loyalty_accounts FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Admins can manage all loyalty accounts" ON loyalty_accounts FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- ============================================
+-- 13. Loyalty Transactions (ポイント履歴)
+-- ============================================
+CREATE TABLE loyalty_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  order_id UUID REFERENCES orders(id),
+  points INT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('earn_order', 'earn_review', 'earn_referral', 'welcome', 'redeem', 'expire')),
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE loyalty_transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Customers can view own loyalty transactions" ON loyalty_transactions FOR SELECT USING (auth.uid() = customer_id);
+CREATE POLICY "Customers can create own loyalty transactions" ON loyalty_transactions FOR INSERT WITH CHECK (auth.uid() = customer_id);
+CREATE POLICY "Admins can manage all loyalty transactions" ON loyalty_transactions FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_loyalty_transactions_customer ON loyalty_transactions (customer_id);
+
+-- ============================================
+-- 14. Coupons (クーポン定義)
+-- ============================================
+CREATE TABLE coupons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT NOT NULL UNIQUE,
+  type TEXT NOT NULL CHECK (type IN ('percent', 'fixed', 'free_service')),
+  value INT NOT NULL,
+  min_order_amount INT,
+  max_uses INT,
+  used_count INT NOT NULL DEFAULT 0,
+  valid_from TIMESTAMPTZ NOT NULL,
+  valid_until TIMESTAMPTZ NOT NULL,
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE coupons ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view active coupons" ON coupons FOR SELECT USING (active = TRUE);
+CREATE POLICY "Admins can manage all coupons" ON coupons FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- ============================================
+-- 15. Customer Coupons (顧客クーポン割当)
+-- ============================================
+CREATE TABLE customer_coupons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  coupon_id UUID NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+  used BOOLEAN DEFAULT FALSE,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE customer_coupons ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Customers can view own coupons" ON customer_coupons FOR SELECT USING (auth.uid() = customer_id);
+CREATE POLICY "Customers can create own coupons" ON customer_coupons FOR INSERT WITH CHECK (auth.uid() = customer_id);
+CREATE POLICY "Customers can update own coupons" ON customer_coupons FOR UPDATE USING (auth.uid() = customer_id);
+CREATE POLICY "Admins can manage all customer coupons" ON customer_coupons FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_customer_coupons_customer ON customer_coupons (customer_id);
+
+-- ============================================
+-- 16. Gifts (ギフトカード)
+-- ============================================
+CREATE TABLE gifts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  recipient_email TEXT NOT NULL,
+  recipient_name TEXT NOT NULL,
+  amount INT NOT NULL CHECK (amount > 0),
+  message TEXT,
+  gift_code TEXT NOT NULL UNIQUE,
+  redeemed BOOLEAN DEFAULT FALSE,
+  redeemed_by UUID REFERENCES profiles(id),
+  redeemed_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ NOT NULL,
+  stripe_payment_intent_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE gifts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Customers can view own sent gifts" ON gifts FOR SELECT USING (auth.uid() = sender_id);
+CREATE POLICY "Customers can view redeemed gifts" ON gifts FOR SELECT USING (auth.uid() = redeemed_by);
+CREATE POLICY "Customers can create gifts" ON gifts FOR INSERT WITH CHECK (auth.uid() = sender_id);
+CREATE POLICY "Admins can manage all gifts" ON gifts FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_gifts_gift_code ON gifts (gift_code);
+
+-- ============================================
+-- 17. Subscriptions (定期予約プラン)
+-- ============================================
+CREATE TABLE subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  pro_id UUID REFERENCES profiles(id),
+  plan_id TEXT NOT NULL,
+  menu_ids UUID[] NOT NULL,
+  total_amount INT NOT NULL CHECK (total_amount > 0),
+  discount_percent INT NOT NULL DEFAULT 0,
+  next_booking_date DATE NOT NULL,
+  customer_latitude DOUBLE PRECISION,
+  customer_longitude DOUBLE PRECISION,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'cancelled')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Customers can view own subscriptions" ON subscriptions FOR SELECT USING (auth.uid() = customer_id);
+CREATE POLICY "Customers can create own subscriptions" ON subscriptions FOR INSERT WITH CHECK (auth.uid() = customer_id);
+CREATE POLICY "Customers can update own subscriptions" ON subscriptions FOR UPDATE USING (auth.uid() = customer_id);
+CREATE POLICY "Pros can view assigned subscriptions" ON subscriptions FOR SELECT USING (auth.uid() = pro_id);
+CREATE POLICY "Admins can manage all subscriptions" ON subscriptions FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_subscriptions_customer ON subscriptions (customer_id);
+CREATE INDEX idx_subscriptions_next_date ON subscriptions (next_booking_date) WHERE status = 'active';
+
+-- ============================================
+-- 18. Scheduled Bookings (日時指定予約)
+-- ============================================
+CREATE TABLE scheduled_bookings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  pro_id UUID REFERENCES profiles(id),
+  menu_ids UUID[] NOT NULL,
+  scheduled_date DATE NOT NULL,
+  scheduled_time TEXT NOT NULL,
+  customer_latitude DOUBLE PRECISION,
+  customer_longitude DOUBLE PRECISION,
+  customer_address TEXT,
+  amount INT NOT NULL CHECK (amount > 0),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'converted')),
+  order_id UUID REFERENCES orders(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE scheduled_bookings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Customers can view own scheduled bookings" ON scheduled_bookings FOR SELECT USING (auth.uid() = customer_id);
+CREATE POLICY "Customers can create scheduled bookings" ON scheduled_bookings FOR INSERT WITH CHECK (auth.uid() = customer_id);
+CREATE POLICY "Customers can update own scheduled bookings" ON scheduled_bookings FOR UPDATE USING (auth.uid() = customer_id);
+CREATE POLICY "Pros can view assigned scheduled bookings" ON scheduled_bookings FOR SELECT USING (auth.uid() = pro_id);
+CREATE POLICY "Pros can update assigned scheduled bookings" ON scheduled_bookings FOR UPDATE USING (auth.uid() = pro_id);
+CREATE POLICY "Admins can manage all scheduled bookings" ON scheduled_bookings FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_scheduled_bookings_customer ON scheduled_bookings (customer_id);
+CREATE INDEX idx_scheduled_bookings_date ON scheduled_bookings (scheduled_date) WHERE status IN ('pending', 'confirmed');
+
+-- ============================================
+-- 19. Realtime subscriptions
 -- ============================================
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE pro_profiles;

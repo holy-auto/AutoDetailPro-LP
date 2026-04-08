@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
@@ -13,41 +14,74 @@ import { ORDER_STATUSES } from '@/constants/categories';
 
 type Tab = 'active' | 'history';
 
-const MOCK_ACTIVE_ORDERS = [
+type OrderItem = {
+  id: string;
+  proName: string;
+  service: string;
+  status: string;
+  price: number;
+  date: string;
+  paymentMethod: string;
+  eta?: string;
+  reviewed?: boolean;
+  rating?: number | null;
+  address?: string;
+  menus?: string[];
+  proPhone?: string;
+  proRating?: number;
+  startedAt?: string;
+  completedAt?: string;
+};
+
+const MOCK_ACTIVE_ORDERS: OrderItem[] = [
   {
     id: '1',
     proName: '田中 太郎',
     service: '手洗い洗車',
-    status: 'arriving' as const,
+    status: 'arriving',
     eta: '5分',
     price: 3000,
     date: '2026-04-07',
     paymentMethod: 'online',
+    address: '東京都渋谷区神南1-2-3',
+    menus: ['手洗い洗車'],
+    proPhone: '090-1234-5678',
+    proRating: 4.9,
   },
 ];
 
-const MOCK_HISTORY = [
+const MOCK_HISTORY: OrderItem[] = [
   {
     id: '2',
     proName: '佐藤 健一',
     service: 'ガラスコーティング',
-    status: 'completed' as const,
+    status: 'completed',
     price: 15000,
     date: '2026-04-05',
     paymentMethod: 'online',
     reviewed: true,
     rating: 5,
+    address: '東京都港区六本木4-5-6',
+    menus: ['ガラスコーティング', 'プレミアム洗車'],
+    proRating: 4.8,
+    startedAt: '14:00',
+    completedAt: '16:05',
   },
   {
     id: '3',
     proName: '鈴木 美咲',
     service: 'フルディテイルコース',
-    status: 'completed' as const,
+    status: 'completed',
     price: 25000,
     date: '2026-04-01',
     paymentMethod: 'cash',
     reviewed: false,
     rating: null,
+    address: '東京都新宿区西新宿7-8-9',
+    menus: ['フルディテイルコース'],
+    proRating: 5.0,
+    startedAt: '10:00',
+    completedAt: '13:30',
   },
 ];
 
@@ -59,6 +93,7 @@ function getStatusIndex(status: string) {
 
 export default function OrdersScreen() {
   const [tab, setTab] = useState<Tab>('active');
+  const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -95,7 +130,12 @@ export default function OrdersScreen() {
         {tab === 'active' ? (
           MOCK_ACTIVE_ORDERS.length > 0 ? (
             MOCK_ACTIVE_ORDERS.map((order) => (
-              <View key={order.id} style={styles.orderCard}>
+              <TouchableOpacity
+                key={order.id}
+                style={styles.orderCard}
+                onPress={() => setSelectedOrder(order)}
+                activeOpacity={0.7}
+              >
                 <View style={styles.orderHeader}>
                   <View>
                     <Text style={styles.orderService}>{order.service}</Text>
@@ -164,7 +204,7 @@ export default function OrdersScreen() {
                     <Text style={styles.confirmButtonText}>作業完了を確認</Text>
                   </TouchableOpacity>
                 )}
-              </View>
+              </TouchableOpacity>
             ))
           ) : (
             <View style={styles.empty}>
@@ -174,7 +214,12 @@ export default function OrdersScreen() {
           )
         ) : (
           MOCK_HISTORY.map((order) => (
-            <View key={order.id} style={styles.historyCard}>
+            <TouchableOpacity
+              key={order.id}
+              style={styles.historyCard}
+              onPress={() => setSelectedOrder(order)}
+              activeOpacity={0.7}
+            >
               <View style={styles.historyHeader}>
                 <View>
                   <Text style={styles.orderService}>{order.service}</Text>
@@ -206,10 +251,160 @@ export default function OrdersScreen() {
                   <Text style={styles.reviewButtonText}>レビューを書く</Text>
                 </TouchableOpacity>
               )}
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
+
+      {/* Order Detail Modal */}
+      <Modal
+        visible={selectedOrder !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSelectedOrder(null)}
+      >
+        {selectedOrder && (
+          <SafeAreaView style={styles.detailContainer}>
+            <View style={styles.detailHeader}>
+              <Text style={styles.detailTitle}>予約詳細</Text>
+              <TouchableOpacity onPress={() => setSelectedOrder(null)}>
+                <Ionicons name="close" size={28} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.detailContent}>
+              {/* Status badge */}
+              <View style={styles.detailStatusRow}>
+                <View style={[
+                  styles.detailStatusBadge,
+                  selectedOrder.status === 'completed'
+                    ? { backgroundColor: '#DCFCE7' }
+                    : { backgroundColor: Colors.primaryFaint },
+                ]}>
+                  <Text style={[
+                    styles.detailStatusText,
+                    selectedOrder.status === 'completed'
+                      ? { color: '#22C55E' }
+                      : { color: Colors.primary },
+                  ]}>
+                    {selectedOrder.status === 'completed' ? '完了' : '進行中'}
+                  </Text>
+                </View>
+                <Text style={styles.detailDate}>{selectedOrder.date}</Text>
+              </View>
+
+              {/* Service info */}
+              <View style={styles.detailSection}>
+                <Text style={styles.detailSectionLabel}>サービス内容</Text>
+                <Text style={styles.detailServiceName}>{selectedOrder.service}</Text>
+                {selectedOrder.menus && selectedOrder.menus.length > 0 && (
+                  <View style={styles.detailMenuList}>
+                    {selectedOrder.menus.map((menu, i) => (
+                      <View key={i} style={styles.detailMenuItem}>
+                        <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                        <Text style={styles.detailMenuText}>{menu}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* Pro info */}
+              <View style={styles.detailSection}>
+                <Text style={styles.detailSectionLabel}>担当プロ</Text>
+                <View style={styles.detailProCard}>
+                  <View style={styles.detailProAvatar}>
+                    <Ionicons name="person" size={24} color={Colors.primaryMedium} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.detailProName}>{selectedOrder.proName}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Ionicons name="star" size={14} color={Colors.gold} />
+                      <Text style={styles.detailProRating}>{selectedOrder.proRating ?? '-'}</Text>
+                    </View>
+                  </View>
+                  {selectedOrder.proPhone && (
+                    <TouchableOpacity style={styles.detailCallButton}>
+                      <Ionicons name="call-outline" size={20} color={Colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              {/* Location */}
+              {selectedOrder.address && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailSectionLabel}>場所</Text>
+                  <View style={styles.detailInfoRow}>
+                    <Ionicons name="location-outline" size={18} color={Colors.textMuted} />
+                    <Text style={styles.detailInfoText}>{selectedOrder.address}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Time */}
+              {(selectedOrder.startedAt || selectedOrder.completedAt) && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailSectionLabel}>作業時間</Text>
+                  <View style={styles.detailTimeRow}>
+                    {selectedOrder.startedAt && (
+                      <View style={styles.detailTimeItem}>
+                        <Text style={styles.detailTimeLabel}>開始</Text>
+                        <Text style={styles.detailTimeValue}>{selectedOrder.startedAt}</Text>
+                      </View>
+                    )}
+                    {selectedOrder.startedAt && selectedOrder.completedAt && (
+                      <Ionicons name="arrow-forward" size={16} color={Colors.textMuted} />
+                    )}
+                    {selectedOrder.completedAt && (
+                      <View style={styles.detailTimeItem}>
+                        <Text style={styles.detailTimeLabel}>完了</Text>
+                        <Text style={styles.detailTimeValue}>{selectedOrder.completedAt}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Payment */}
+              <View style={styles.detailSection}>
+                <Text style={styles.detailSectionLabel}>お支払い</Text>
+                <View style={styles.detailPaymentRow}>
+                  <Text style={styles.detailPaymentMethod}>
+                    {selectedOrder.paymentMethod === 'online' ? 'オンライン決済' : '現金決済'}
+                  </Text>
+                  <Text style={styles.detailPaymentAmount}>
+                    ¥{selectedOrder.price.toLocaleString()}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Review section for completed orders */}
+              {selectedOrder.status === 'completed' && !selectedOrder.reviewed && (
+                <TouchableOpacity style={styles.detailReviewButton}>
+                  <Ionicons name="star-outline" size={20} color={Colors.white} />
+                  <Text style={styles.detailReviewButtonText}>レビューを書く</Text>
+                </TouchableOpacity>
+              )}
+
+              {selectedOrder.reviewed && (
+                <View style={styles.detailReviewDone}>
+                  <View style={styles.stars}>
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Ionicons
+                        key={s}
+                        name="star"
+                        size={20}
+                        color={s <= (selectedOrder.rating ?? 0) ? Colors.gold : Colors.border}
+                      />
+                    ))}
+                  </View>
+                  <Text style={styles.detailReviewDoneText}>レビュー済み</Text>
+                </View>
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        )}
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -465,5 +660,182 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: '600',
     color: Colors.primary,
+  },
+
+  // Detail Modal
+  detailContainer: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  detailTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  detailContent: {
+    padding: Spacing.lg,
+    paddingBottom: Spacing.xxl,
+  },
+  detailStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  detailStatusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: BorderRadius.full,
+  },
+  detailStatusText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  detailDate: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+  },
+  detailSection: {
+    marginBottom: Spacing.lg,
+  },
+  detailSectionLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: Spacing.sm,
+  },
+  detailServiceName: {
+    fontSize: FontSize.xl,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  detailMenuList: {
+    marginTop: Spacing.sm,
+    gap: 6,
+  },
+  detailMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailMenuText: {
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+  },
+  detailProCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  detailProAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primaryFaint,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  detailProName: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  detailProRating: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  detailCallButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primaryFaint,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  detailInfoText: {
+    fontSize: FontSize.md,
+    color: Colors.textPrimary,
+    flex: 1,
+  },
+  detailTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  detailTimeItem: {
+    alignItems: 'center',
+  },
+  detailTimeLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  detailTimeValue: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  detailPaymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  detailPaymentMethod: {
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+  },
+  detailPaymentAmount: {
+    fontSize: FontSize.xl,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+  },
+  detailReviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  detailReviewButtonText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  detailReviewDone: {
+    alignItems: 'center',
+    marginTop: Spacing.sm,
+    gap: 6,
+  },
+  detailReviewDoneText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
 });
