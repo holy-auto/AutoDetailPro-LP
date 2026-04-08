@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, createContext, useContext } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { useRouter, useSegments } from 'expo-router';
 
@@ -37,6 +37,12 @@ export default function RootLayout() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      // Demo mode: skip auth, go straight to guest customer
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
