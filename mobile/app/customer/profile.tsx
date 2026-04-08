@@ -113,7 +113,7 @@ export default function ProfileScreen() {
           </Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>Auto Detail Pro v1.0.0</Text>
+        <Text style={styles.version}>Mobile Wash v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );

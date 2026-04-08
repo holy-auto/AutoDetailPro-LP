@@ -1,5 +1,5 @@
 // =============================================
-// Auto Detail Pro — Business Rules & Constants
+// Mobile Wash — Business Rules & Constants
 // =============================================
 
 // --- Matching ---

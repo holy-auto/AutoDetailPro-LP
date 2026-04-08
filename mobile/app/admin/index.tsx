@@ -105,7 +105,7 @@ export default function AdminDashboard() {
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>運営ダッシュボード</Text>
-            <Text style={styles.subtitle}>Auto Detail Pro</Text>
+            <Text style={styles.subtitle}>Mobile Wash</Text>
           </View>
           <TouchableOpacity
             style={styles.logoutBtn}

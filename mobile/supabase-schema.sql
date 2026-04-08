@@ -1,5 +1,5 @@
 -- =============================================
--- Auto Detail Pro — Supabase Database Schema
+-- Mobile Wash — Supabase Database Schema
 -- Run in Supabase SQL Editor
 -- =============================================
 

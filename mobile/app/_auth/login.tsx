@@ -53,7 +53,7 @@ export default function LoginScreen() {
           </View>
         </View>
 
-        <Text style={styles.appName}>Auto Detail Pro</Text>
+        <Text style={styles.appName}>Mobile Wash</Text>
         <Text style={styles.tagline}>プレミアムカーディテイリング{'\n'}あなたの元へ</Text>
       </View>
 
