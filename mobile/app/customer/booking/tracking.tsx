@@ -19,7 +19,13 @@ import {
   COMPLETION,
   type OrderStatus,
 } from '@/constants/business-rules';
-import { DEFAULT_LOCATION, type Coords } from '@/lib/location';
+import {
+  DEFAULT_LOCATION,
+  fetchRoute,
+  subscribeToProLocation,
+  type Coords,
+  type RouteInfo,
+} from '@/lib/location';
 
 // Simulate pro movement path
 const PRO_PATH: Coords[] = [
@@ -44,19 +50,76 @@ export default function TrackingScreen() {
     totalPrice: string;
     paymentMethod: string;
     orderId: string;
+    proId: string;
   }>();
 
   const totalPrice = parseInt(params.totalPrice ?? '0', 10);
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>('accepted');
   const [proLocation, setProLocation] = useState<Coords>(PRO_PATH[0]);
   const [proPathIndex, setProPathIndex] = useState(0);
-  const [eta, setEta] = useState('5分');
+  const [eta, setEta] = useState('計算中...');
+  const [routeCoords, setRouteCoords] = useState<Coords[]>([]);
+  const [routeDistance, setRouteDistance] = useState('');
   const [confirmTimeout, setConfirmTimeout] = useState(
     COMPLETION.CONFIRMATION_TIMEOUT_MIN * 60
   );
+  const routeFetchedRef = useRef(false);
 
-  // Simulate pro movement
+  // Fetch driving route when pro starts moving (or on mount)
   useEffect(() => {
+    if (routeFetchedRef.current) return;
+    routeFetchedRef.current = true;
+
+    (async () => {
+      const route = await fetchRoute(proLocation, CUSTOMER_LOCATION);
+      setRouteCoords(route.coordinates);
+      setEta(route.durationText);
+      setRouteDistance(route.distanceText);
+    })();
+  }, []);
+
+  // Re-fetch route when pro location changes significantly
+  const lastRouteFetchRef = useRef<Coords>(proLocation);
+  useEffect(() => {
+    if (currentStatus !== 'on_the_way') return;
+
+    const prev = lastRouteFetchRef.current;
+    const dLat = Math.abs(proLocation.latitude - prev.latitude);
+    const dLng = Math.abs(proLocation.longitude - prev.longitude);
+    // Re-fetch if moved more than ~200m
+    if (dLat < 0.002 && dLng < 0.002) return;
+
+    lastRouteFetchRef.current = proLocation;
+    (async () => {
+      const route = await fetchRoute(proLocation, CUSTOMER_LOCATION);
+      setRouteCoords(route.coordinates);
+      setEta(route.durationText);
+      setRouteDistance(route.distanceText);
+    })();
+  }, [proLocation, currentStatus]);
+
+  // Subscribe to pro's real-time location if proId is available
+  useEffect(() => {
+    if (!params.proId) return;
+    const sub = subscribeToProLocation(params.proId, (coords) => {
+      setProLocation(coords);
+      // Animate camera to keep both markers visible
+      mapRef.current?.animateToRegion(
+        {
+          latitude: (coords.latitude + CUSTOMER_LOCATION.latitude) / 2,
+          longitude: (coords.longitude + CUSTOMER_LOCATION.longitude) / 2,
+          latitudeDelta: 0.015,
+          longitudeDelta: 0.015,
+        },
+        800
+      );
+    });
+    return () => sub.unsubscribe();
+  }, [params.proId]);
+
+  // Simulate pro movement (demo fallback when no real proId)
+  useEffect(() => {
+    if (params.proId) return; // skip simulation when connected to real pro
     if (currentStatus !== 'on_the_way') return;
 
     const interval = setInterval(() => {
@@ -67,9 +130,7 @@ export default function TrackingScreen() {
           return prev;
         }
         setProLocation(PRO_PATH[next]);
-        setEta(`${PRO_PATH.length - next - 1}分`);
 
-        // Animate map camera to follow pro
         mapRef.current?.animateToRegion(
           {
             latitude:
@@ -87,7 +148,7 @@ export default function TrackingScreen() {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [currentStatus]);
+  }, [currentStatus, params.proId]);
 
   // Status progression simulation
   useEffect(() => {
@@ -95,7 +156,6 @@ export default function TrackingScreen() {
     timers.push(
       setTimeout(() => {
         setCurrentStatus('on_the_way');
-        setEta('5分');
       }, 2000)
     );
     timers.push(
@@ -224,8 +284,18 @@ export default function TrackingScreen() {
               </Marker>
             )}
 
-            {/* Route line */}
-            {showMap && (
+            {/* Driving route polyline */}
+            {showMap && routeCoords.length > 0 && (
+              <Polyline
+                coordinates={routeCoords}
+                strokeColor={Colors.primary}
+                strokeWidth={4}
+                lineDashPattern={[0]}
+              />
+            )}
+
+            {/* Fallback straight line if route not yet loaded */}
+            {showMap && routeCoords.length === 0 && (
               <Polyline
                 coordinates={[proLocation, CUSTOMER_LOCATION]}
                 strokeColor={Colors.primary}
@@ -263,6 +333,9 @@ export default function TrackingScreen() {
                 {currentStatus === 'arrived' ? 'プロ到着' : '到着予定'}
               </Text>
               <Text style={styles.etaValue}>{eta}</Text>
+              {routeDistance !== '' && currentStatus !== 'arrived' && (
+                <Text style={styles.etaDistance}>{routeDistance}</Text>
+              )}
             </View>
           )}
 
@@ -499,6 +572,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xl,
     fontWeight: '800',
     color: Colors.primary,
+  },
+  etaDistance: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   statusOverlay: {
     position: 'absolute',
