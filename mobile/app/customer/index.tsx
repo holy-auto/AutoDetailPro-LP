@@ -126,7 +126,19 @@ export default function CustomerHome() {
 
   const handleCallPro = () => {
     if (!requireAuth()) return;
-    router.push('/customer/booking/select-menu');
+    // Pass current location to booking flow
+    router.push({
+      pathname: '/customer/booking/select-menu',
+      params: {
+        lat: userLocation.latitude.toString(),
+        lng: userLocation.longitude.toString(),
+      },
+    });
+  };
+
+  const handleScheduleBooking = () => {
+    if (!requireAuth()) return;
+    router.push('/customer/booking/schedule' as any);
   };
 
   const handleRecenter = () => {
@@ -379,6 +391,16 @@ export default function CustomerHome() {
           ))}
         </View>
       </ScrollView>
+
+      {/* Schedule button */}
+      <TouchableOpacity
+        style={styles.scheduleButton}
+        activeOpacity={0.85}
+        onPress={handleScheduleBooking}
+      >
+        <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
+        <Text style={styles.scheduleButtonText}>日時予約</Text>
+      </TouchableOpacity>
 
       {/* FAB - Call Pro Button (Go style) */}
       <TouchableOpacity
@@ -680,10 +702,36 @@ const styles = StyleSheet.create({
     color: Colors.primaryMedium,
   },
 
+  // Schedule button
+  scheduleButton: {
+    position: 'absolute',
+    bottom: 40,
+    left: Spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: BorderRadius.full,
+    gap: 6,
+    shadowColor: Colors.shadowDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  scheduleButtonText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+
   // FAB
   fab: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 40,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',

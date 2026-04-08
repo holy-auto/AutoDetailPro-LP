@@ -1,9 +1,10 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, createContext, useContext } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useEffect, useState, useCallback, createContext, useContext } from 'react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { useRouter, useSegments } from 'expo-router';
+import SplashScreen from './splash';
 
 type UserRole = 'customer' | 'pro' | 'admin' | null;
 
@@ -33,10 +34,21 @@ export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const segments = useSegments();
   const router = useRouter();
 
+  const handleSplashFinish = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      // Demo mode: skip auth, go straight to guest customer
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
@@ -120,6 +132,15 @@ export default function RootLayout() {
     router.push('/_auth/login');
     return false;
   };
+
+  if (showSplash) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <SplashScreen onFinish={handleSplashFinish} />
+      </>
+    );
+  }
 
   return (
     <AuthContext.Provider

@@ -1,16 +1,16 @@
 export const Colors = {
-  // Forest Green palette
-  primary: '#1B4332',
-  primaryLight: '#2D6A4F',
-  primaryMedium: '#40916C',
-  primarySoft: '#52B788',
-  primaryPale: '#B7E4C7',
-  primaryFaint: '#D8F3DC',
+  // Blue palette
+  primary: '#1E3A5F',
+  primaryLight: '#2B5797',
+  primaryMedium: '#3B82F6',
+  primarySoft: '#60A5FA',
+  primaryPale: '#BFDBFE',
+  primaryFaint: '#DBEAFE',
 
   // Base
   white: '#FFFFFF',
-  offWhite: '#F8FAF9',
-  background: '#FAFCFB',
+  offWhite: '#F8FAFC',
+  background: '#FAFBFE',
   card: '#FFFFFF',
 
   // Text
@@ -32,8 +32,8 @@ export const Colors = {
   // Borders & Shadows
   border: '#E2E8F0',
   borderLight: '#F1F5F9',
-  shadow: 'rgba(27, 67, 50, 0.08)',
-  shadowDark: 'rgba(27, 67, 50, 0.16)',
+  shadow: 'rgba(30, 58, 95, 0.08)',
+  shadowDark: 'rgba(30, 58, 95, 0.16)',
 
   // Overlay
   overlay: 'rgba(0, 0, 0, 0.5)',

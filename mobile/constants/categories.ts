@@ -40,7 +40,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
     name: 'フルディテイル',
     icon: 'star-circle',
     description: '外装＋内装＋コーティングのフルコース',
-    color: '#1B4332',
+    color: '#1E3A5F',
   },
   {
     id: 'engine',

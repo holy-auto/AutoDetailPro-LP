@@ -41,6 +41,7 @@ yarn-error.log*
 mobile/node_modules
 mobile/.expo
 mobile/package-lock.json
+mobile/dist
 
 # typescript
 *.tsbuildinfo

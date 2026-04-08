@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "Auto Detail Pro",
-    "slug": "autodetailpro",
+    "name": "Mobile Wash",
+    "slug": "mobilewash",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "autodetailpro",
+    "scheme": "mobilewash",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#1B4332",
+      "backgroundColor": "#1E3A5F",
       "resizeMode": "contain"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.autodetailpro.app",
+      "bundleIdentifier": "com.mobilewash.app",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "近くのプロを表示するために位置情報を使用します",
@@ -23,9 +23,9 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#1B4332"
+        "backgroundColor": "#1E3A5F"
       },
-      "package": "com.autodetailpro.app",
+      "package": "com.mobilewash.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
