@@ -559,7 +559,66 @@ CREATE INDEX idx_scheduled_bookings_customer ON scheduled_bookings (customer_id)
 CREATE INDEX idx_scheduled_bookings_date ON scheduled_bookings (scheduled_date) WHERE status IN ('pending', 'confirmed');
 
 -- ============================================
--- 19. Realtime subscriptions
+-- 19. Quality Audits (覆面調査)
+-- ============================================
+CREATE TABLE quality_audits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  customer_id UUID NOT NULL REFERENCES profiles(id),
+  pro_id UUID NOT NULL REFERENCES profiles(id),
+  -- Status
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'expired')),
+  -- Scores (JSON: { checklistId: 1-5 })
+  scores JSONB,
+  overall_score DOUBLE PRECISION,
+  comment TEXT,
+  -- Reward
+  reward_coupon_id UUID REFERENCES coupons(id),
+  -- Timestamps
+  expires_at TIMESTAMPTZ NOT NULL,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE quality_audits ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Customers can view own audits" ON quality_audits FOR SELECT USING (auth.uid() = customer_id);
+CREATE POLICY "Customers can update own audits" ON quality_audits FOR UPDATE USING (auth.uid() = customer_id AND status = 'pending');
+CREATE POLICY "Pros can view audits about them" ON quality_audits FOR SELECT USING (auth.uid() = pro_id);
+CREATE POLICY "Admins can manage all audits" ON quality_audits FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_quality_audits_pro ON quality_audits (pro_id);
+CREATE INDEX idx_quality_audits_customer ON quality_audits (customer_id);
+CREATE INDEX idx_quality_audits_status ON quality_audits (status) WHERE status = 'pending';
+
+-- ============================================
+-- 20. Notifications (通知)
+-- ============================================
+CREATE TABLE notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT,
+  data JSONB,
+  read BOOLEAN DEFAULT FALSE,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can manage all notifications" ON notifications FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+CREATE INDEX idx_notifications_user ON notifications (user_id);
+CREATE INDEX idx_notifications_unread ON notifications (user_id) WHERE read = FALSE;
+
+-- ============================================
+-- 21. Realtime subscriptions
 -- ============================================
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE pro_profiles;

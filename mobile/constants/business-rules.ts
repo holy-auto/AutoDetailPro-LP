@@ -380,6 +380,41 @@ export const SUBSCRIPTION = {
 
 export type SubscriptionPlanId = (typeof SUBSCRIPTION.PLANS)[number]['id'];
 
+// --- Quality Audit (覆面調査) ---
+export const QUALITY_AUDIT = {
+  // 抜き打ち選出確率（完了注文の何%に調査依頼するか）
+  SELECTION_RATE: 0.15,           // 15%の注文で依頼
+  // 調査依頼の有効期限
+  EXPIRY_HOURS: 48,               // 48時間以内に回答
+  // 報酬クーポン
+  REWARD_COUPON: {
+    TYPE: 'percent' as const,
+    VALUE: 10,                     // 10%OFF
+    VALID_DAYS: 30,                // 30日間有効
+  },
+  // チェック項目
+  CHECKLIST: [
+    { id: 'punctuality', label: '時間通りに到着したか', category: 'service', weight: 15 },
+    { id: 'greeting', label: '挨拶・身だしなみは適切か', category: 'manner', weight: 10 },
+    { id: 'explanation', label: '作業内容の説明があったか', category: 'communication', weight: 10 },
+    { id: 'quality_exterior', label: '外装の仕上がりは満足か', category: 'quality', weight: 20 },
+    { id: 'quality_interior', label: '内装の仕上がりは満足か', category: 'quality', weight: 15 },
+    { id: 'care_vehicle', label: '車を丁寧に扱っていたか', category: 'quality', weight: 10 },
+    { id: 'cleanup', label: '作業後の清掃は行われたか', category: 'quality', weight: 10 },
+    { id: 'overall', label: '全体的な満足度', category: 'overall', weight: 10 },
+  ],
+  // スコア算出
+  SCORE_SCALE: 5,                  // 各項目1-5で回答
+  PASSING_SCORE: 3.5,              // 合格ライン
+  // 改善プラン発動条件
+  TRIGGER_IMPROVEMENT_BELOW: 3.0,  // この平均以下で改善プラン検討
+  // 連続低スコアでのアクション
+  CONSECUTIVE_LOW_THRESHOLD: 2,    // 2回連続低スコアで改善プラン自動発動
+} as const;
+
+export type AuditChecklistItem = (typeof QUALITY_AUDIT.CHECKLIST)[number];
+export type AuditChecklistId = AuditChecklistItem['id'];
+
 // --- Scheduled Booking (先日程予約) ---
 export const SCHEDULED_BOOKING = {
   MIN_ADVANCE_HOURS: 2,          // 最低2時間先

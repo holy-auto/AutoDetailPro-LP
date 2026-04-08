@@ -1,7 +1,8 @@
 // supabase/functions/process-cron/index.ts
 // Edge Function: Scheduled tasks runner (called by pg_cron or Supabase Cron)
 // Handles: auto-cancel, auto-complete, subscription processing,
-//          scheduled booking conversion, improvement plan evaluation, boost expiry
+//          scheduled booking conversion, improvement plan evaluation, boost expiry,
+//          quality audit expiry
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -261,6 +262,23 @@ Deno.serve(async (req) => {
     results.boost_expiry = { expired: expired?.length ?? 0 };
   } catch (e) {
     results.boost_expiry = { error: (e as Error).message };
+  }
+
+  // ========================================
+  // 7. Expire quality audits (48h timeout)
+  // ========================================
+  try {
+    const now = new Date().toISOString();
+    const { data: expiredAudits } = await supabase
+      .from('quality_audits')
+      .update({ status: 'expired' })
+      .eq('status', 'pending')
+      .lt('expires_at', now)
+      .select('id');
+
+    results.quality_audit_expiry = { expired: expiredAudits?.length ?? 0 };
+  } catch (e) {
+    results.quality_audit_expiry = { error: (e as Error).message };
   }
 
   return new Response(
