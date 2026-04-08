@@ -62,6 +62,7 @@ export default function CustomerLayout() {
       <Tabs.Screen name="gift" options={{ href: null }} />
       <Tabs.Screen name="subscription" options={{ href: null }} />
       <Tabs.Screen name="quality-audit" options={{ href: null }} />
+      <Tabs.Screen name="review" options={{ href: null }} />
     </Tabs>
   );
 }

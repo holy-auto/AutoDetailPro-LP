@@ -1,0 +1,282 @@
+// supabase/functions/stripe-connect/index.ts
+// Edge Function: Stripe Connect operations for pro payouts & payment management
+// Handles account creation, onboarding, payment intents, captures, and transfers.
+
+import Stripe from 'https://esm.sh/stripe@14';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
+};
+
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+function errorResponse(message: string, status = 400) {
+  return jsonResponse({ error: message }, status);
+}
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeSecretKey) {
+      return errorResponse('STRIPE_SECRET_KEY is not configured', 500);
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2024-04-10',
+      httpClient: Stripe.createFetchHttpClient(),
+    });
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const body = await req.json();
+    const { action } = body;
+
+    // -----------------------------------------------------------------------
+    // create_account — Create Stripe Express account for a pro
+    // -----------------------------------------------------------------------
+    if (action === 'create_account') {
+      const { pro_id, email } = body;
+
+      if (!pro_id || !email) {
+        return errorResponse('pro_id and email are required');
+      }
+
+      const account = await stripe.accounts.create({
+        type: 'express',
+        country: 'JP',
+        email,
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+        business_type: 'individual',
+        metadata: {
+          pro_id,
+          platform: 'mobile_wash',
+        },
+      });
+
+      // Persist the Stripe account ID to the database
+      await supabase
+        .from('kyc_verifications')
+        .update({
+          stripe_account_id: account.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', pro_id);
+
+      return jsonResponse({
+        account_id: account.id,
+        pro_id,
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // onboarding_link — Generate Stripe account onboarding URL
+    // -----------------------------------------------------------------------
+    if (action === 'onboarding_link') {
+      const { stripe_account_id } = body;
+
+      if (!stripe_account_id) {
+        return errorResponse('stripe_account_id is required');
+      }
+
+      const appUrl = Deno.env.get('APP_URL') ?? 'https://mobilewash.jp';
+
+      const accountLink = await stripe.accountLinks.create({
+        account: stripe_account_id,
+        refresh_url: `${appUrl}/stripe/refresh`,
+        return_url: `${appUrl}/stripe/return`,
+        type: 'account_onboarding',
+      });
+
+      return jsonResponse({
+        url: accountLink.url,
+        expires_at: accountLink.expires_at,
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // check_status — Check if Stripe account is fully onboarded
+    // -----------------------------------------------------------------------
+    if (action === 'check_status') {
+      const { stripe_account_id } = body;
+
+      if (!stripe_account_id) {
+        return errorResponse('stripe_account_id is required');
+      }
+
+      const account = await stripe.accounts.retrieve(stripe_account_id);
+
+      return jsonResponse({
+        account_id: account.id,
+        charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled,
+        details_submitted: account.details_submitted,
+        requirements: account.requirements,
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // create_payment_intent — Create PI with manual capture (pre-auth)
+    // -----------------------------------------------------------------------
+    if (action === 'create_payment_intent') {
+      const { order_id, amount, currency = 'jpy', customer_id, capture_method = 'manual' } = body;
+
+      if (!order_id || !amount) {
+        return errorResponse('order_id and amount are required');
+      }
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency,
+        capture_method,
+        metadata: {
+          order_id,
+          customer_id: customer_id ?? '',
+          platform: 'mobile_wash',
+        },
+      });
+
+      // Save PI ID to the order
+      await supabase
+        .from('orders')
+        .update({
+          stripe_payment_intent_id: paymentIntent.id,
+        })
+        .eq('id', order_id);
+
+      return jsonResponse({
+        payment_intent_id: paymentIntent.id,
+        client_secret: paymentIntent.client_secret,
+        status: paymentIntent.status,
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // capture — Capture a pre-authorized Payment Intent (full or partial)
+    // -----------------------------------------------------------------------
+    if (action === 'capture') {
+      const { payment_intent_id, amount } = body;
+
+      if (!payment_intent_id) {
+        return errorResponse('payment_intent_id is required');
+      }
+
+      const captureParams: Stripe.PaymentIntentCaptureParams = {};
+      if (amount !== undefined && amount !== null) {
+        captureParams.amount_to_capture = amount;
+      }
+
+      const paymentIntent = await stripe.paymentIntents.capture(
+        payment_intent_id,
+        captureParams,
+      );
+
+      return jsonResponse({
+        payment_intent_id: paymentIntent.id,
+        status: paymentIntent.status,
+        amount_captured: paymentIntent.amount_received,
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // cancel_intent — Cancel a pre-authorized Payment Intent
+    // -----------------------------------------------------------------------
+    if (action === 'cancel_intent') {
+      const { payment_intent_id } = body;
+
+      if (!payment_intent_id) {
+        return errorResponse('payment_intent_id is required');
+      }
+
+      const paymentIntent = await stripe.paymentIntents.cancel(payment_intent_id);
+
+      return jsonResponse({
+        payment_intent_id: paymentIntent.id,
+        status: paymentIntent.status,
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // transfer — Transfer funds to a connected account
+    // -----------------------------------------------------------------------
+    if (action === 'transfer') {
+      const { order_id, destination, amount, currency = 'jpy' } = body;
+
+      if (!destination || !amount) {
+        return errorResponse('destination and amount are required');
+      }
+
+      const transfer = await stripe.transfers.create({
+        amount,
+        currency,
+        destination,
+        metadata: {
+          order_id: order_id ?? '',
+          platform: 'mobile_wash',
+        },
+      });
+
+      // Record the transfer in the payouts table
+      if (order_id) {
+        // Determine the pro_id from the connected account
+        const { data: kyc } = await supabase
+          .from('kyc_verifications')
+          .select('user_id')
+          .eq('stripe_account_id', destination)
+          .single();
+
+        if (kyc?.user_id) {
+          await supabase.from('payouts').insert({
+            pro_id: kyc.user_id,
+            order_id,
+            amount,
+            fee: 0,
+            schedule: 'instant',
+            status: 'paid',
+            stripe_transfer_id: transfer.id,
+            paid_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      return jsonResponse({
+        transfer_id: transfer.id,
+        amount: transfer.amount,
+        destination: transfer.destination,
+        status: 'paid',
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // Unknown action
+    // -----------------------------------------------------------------------
+    return errorResponse(`Unknown action: ${action}`, 400);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Internal server error';
+
+    // Surface Stripe-specific error details
+    if ((err as any)?.type?.startsWith('Stripe')) {
+      return errorResponse((err as any).message, 402);
+    }
+
+    return errorResponse(message, 500);
+  }
+});
