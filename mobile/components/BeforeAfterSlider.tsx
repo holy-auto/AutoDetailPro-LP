@@ -30,65 +30,34 @@ export default function BeforeAfterSlider({
   height = 300,
 }: Props) {
   const containerWidth = useRef(SCREEN_WIDTH);
-  const [sliderX, setSliderX] = useState(0.5); // 0-1 ratio
+  const [sliderX, setSliderX] = useState(0.5); // 0–1 ratio
+  const positionAtGrant = useRef(0.5);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_evt, gestureState) => {
-        const width = containerWidth.current;
-        const newX = Math.max(0, Math.min(width, (sliderX * width) + gestureState.dx));
-        setSliderX(newX / width);
-      },
-      onPanResponderRelease: () => {
-        // Position is already set in state via onPanResponderMove
-      },
-    }),
-  ).current;
-
-  // We need a fresh panResponder that captures current sliderX.
-  // Using a ref-based approach where we track the position.
-  const positionRef = useRef(0.5);
-
-  const panResponderRef = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        positionRef.current = sliderX;
-      },
-      onPanResponderMove: (_evt, gestureState) => {
-        const width = containerWidth.current;
-        const startPixel = positionRef.current * width;
-        const newPixel = Math.max(0, Math.min(width, startPixel + gestureState.dx));
-        setSliderX(newPixel / width);
-      },
-    }),
-  );
-
-  // Re-create panResponder to always have fresh sliderX on grant
-  const activePanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 2,
       onPanResponderGrant: () => {
-        positionRef.current = 0;
+        // Capture the current position ratio when the gesture starts.
+        // We read from a ref that is kept in sync with state to avoid
+        // stale-closure issues (PanResponder is created once).
+        positionAtGrant.current = positionAtGrant.current; // noop, value already current
       },
       onPanResponderMove: (_evt, gestureState) => {
         const width = containerWidth.current;
-        // Calculate from the initial touch position relative to container
-        setSliderX((prev) => {
-          const startPixel = (positionRef.current || prev) * width;
-          if (positionRef.current === 0) {
-            positionRef.current = prev;
-          }
-          const newPixel = Math.max(
-            0,
-            Math.min(width, positionRef.current * width + gestureState.dx),
-          );
-          return newPixel / width;
-        });
+        const startPixel = positionAtGrant.current * width;
+        const newPixel = Math.max(0, Math.min(width, startPixel + gestureState.dx));
+        const ratio = newPixel / width;
+        positionAtGrant.current = positionAtGrant.current; // keep grant value stable during drag
+        setSliderX(ratio);
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        // Commit the final position to the ref so the next grant picks it up.
+        const width = containerWidth.current;
+        const startPixel = positionAtGrant.current * width;
+        const newPixel = Math.max(0, Math.min(width, startPixel + gestureState.dx));
+        const ratio = newPixel / width;
+        positionAtGrant.current = ratio;
       },
     }),
   ).current;
@@ -100,7 +69,7 @@ export default function BeforeAfterSlider({
       style={[styles.container, { height }]}
       onLayout={(e) => {
         containerWidth.current = e.nativeEvent.layout.width;
-        // Re-trigger to use correct width
+        // Re-render to recalculate pixel positions with real width
         setSliderX((prev) => prev);
       }}
     >
@@ -131,7 +100,7 @@ export default function BeforeAfterSlider({
         <Text style={styles.labelText}>AFTER</Text>
       </View>
 
-      {/* Slider divider line + handle */}
+      {/* Slider divider line */}
       <View
         style={[styles.divider, { left: clipWidth - 1 }]}
         pointerEvents="none"
@@ -139,6 +108,7 @@ export default function BeforeAfterSlider({
         <View style={styles.dividerLine} />
       </View>
 
+      {/* Draggable handle */}
       <View
         style={[
           styles.handle,
@@ -147,7 +117,7 @@ export default function BeforeAfterSlider({
             top: height / 2 - HANDLE_SIZE / 2,
           },
         ]}
-        {...activePanResponder.panHandlers}
+        {...panResponder.panHandlers}
       >
         <Text style={styles.handleArrows}>{'\u25C0  \u25B6'}</Text>
       </View>
