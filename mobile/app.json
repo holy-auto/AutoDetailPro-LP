@@ -15,10 +15,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mobilewash.app",
+      "buildNumber": "1",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "近くのプロを表示するために位置情報を使用します",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "出張中の位置情報共有に使用します"
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "出張中の位置情報共有に使用します",
+        "NSUserTrackingUsageDescription": "パーソナライズされた広告を表示するために使用します",
+        "SKAdNetworkItems": [
+          { "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork" }
+        ]
       }
     },
     "android": {
@@ -26,9 +31,11 @@
         "backgroundColor": "#1E3A5F"
       },
       "package": "com.mobilewash.app",
+      "versionCode": 1,
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "com.google.android.gms.permission.AD_ID"
       ]
     },
     "plugins": [
