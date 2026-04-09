@@ -18,8 +18,7 @@ type Props = { onFinish: () => void };
 // ─── Module-level guard: survives React Strict Mode remounts ───
 let _animationStarted = false;
 
-// ─── Foam bubbles (泡) — グリッド配置で画面を完全に覆う ───
-// Grid-based: divide screen into cells, place a bubble in each cell
+// ─── Foam bubbles (泡) — グリッド配置で画面を完全に覆う、左右から噴射 ───
 const GRID_COLS = 6;
 const GRID_ROWS = 10;
 const CELL_W = SW / GRID_COLS;
@@ -27,15 +26,22 @@ const CELL_H = SH / GRID_ROWS;
 const FOAM_GRID = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => {
   const col = i % GRID_COLS;
   const row = Math.floor(i / GRID_COLS);
+  // 左右交互: 偶数行は右から、奇数行は左から
+  const fromRight = row % 2 === 0;
   return {
     id: i,
     size: Math.max(CELL_W, CELL_H) * 1.4 + Math.random() * 30,
-    startX: SW + Math.random() * SW * 0.3,
+    // 左から来る泡は画面左外、右から来る泡は画面右外からスタート
+    startX: fromRight
+      ? SW + Math.random() * SW * 0.3
+      : -(Math.random() * SW * 0.3),
     startY: row * CELL_H + CELL_H * 0.5 + (Math.random() - 0.5) * CELL_H * 0.3,
     endX: col * CELL_W + CELL_W * 0.5 + (Math.random() - 0.5) * CELL_W * 0.3,
     endY: row * CELL_H + CELL_H * 0.5 + (Math.random() - 0.5) * CELL_H * 0.3,
     delay: Math.random() * 500,
     opacity: 0.93 + Math.random() * 0.07,
+    // ポップ時のランダムディレイ (バラバラに消える用)
+    popDelay: Math.random() * 900,
   };
 });
 
@@ -111,7 +117,7 @@ export default function SplashScreen({ onFinish }: Props) {
 
     // =========================================
     // PHASE 1: Foam spray (t=0 ~ 800ms)
-    // 泡が右側からスプレーのように飛んでくる + 白オーバーレイ
+    // 泡が左右から交互にスプレーのように飛んでくる + 白オーバーレイ
     // =========================================
 
     // Solid white overlay fades in alongside bubbles for guaranteed coverage
@@ -180,26 +186,23 @@ export default function SplashScreen({ onFinish }: Props) {
           useNativeDriver: true,
         }).start();
 
-        // Each bubble pops individually — top rows first, bottom rows last
+        // Each bubble pops at a random time — バラバラに消える
         FOAM_GRID.forEach((f, i) => {
-          const row = Math.floor(i / GRID_COLS);
-          // Stagger: ~0ms for top row, ~800ms for bottom row
-          const rowDelay = (row / GRID_ROWS) * 800 + Math.random() * 150;
           const popTimer = setTimeout(() => {
             Animated.parallel([
               Animated.timing(foamAnims[i].opacity, {
                 toValue: 0,
-                duration: 300 + Math.random() * 200,
+                duration: 250 + Math.random() * 250,
                 useNativeDriver: true,
               }),
               // Bubble shrinks as it pops
               Animated.timing(foamAnims[i].scale, {
-                toValue: 0.3,
-                duration: 250,
+                toValue: 0.2 + Math.random() * 0.2,
+                duration: 200 + Math.random() * 150,
                 useNativeDriver: true,
               }),
             ]).start();
-          }, rowDelay);
+          }, f.popDelay);
           timers.push(popTimer);
         });
       }, 200);
