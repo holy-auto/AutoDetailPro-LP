@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, useCallback, useMemo, createContext, useContext } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo, createContext, useContext } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { useRouter, useSegments } from 'expo-router';
@@ -35,10 +35,13 @@ export default function RootLayout() {
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
+  const splashDone = useRef(false);
   const segments = useSegments();
   const router = useRouter();
 
   const handleSplashFinish = useCallback(() => {
+    if (splashDone.current) return;
+    splashDone.current = true;
     setShowSplash(false);
   }, []);
 

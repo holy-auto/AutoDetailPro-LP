@@ -15,20 +15,22 @@ const { width: SW, height: SH } = Dimensions.get('window');
 
 type Props = { onFinish: () => void };
 
-// ─── Foam bubbles (泡) ───
-const FOAM_COUNT = 18;
+// ─── Foam bubbles (泡) — 画面が真っ白になるくらい大量 ───
+const FOAM_COUNT = 35;
 const FOAM = Array.from({ length: FOAM_COUNT }, (_, i) => ({
   id: i,
-  // Random size: small foam = 30, large = 80
-  size: 30 + Math.random() * 50,
-  // Start from right side (spray direction)
-  startX: SW * 0.6 + Math.random() * SW * 0.5,
-  startY: SH * 0.1 + Math.random() * SH * 0.8,
-  // End scattered across screen
-  endX: -SW * 0.1 + Math.random() * SW * 1.2,
-  endY: SH * 0.05 + Math.random() * SH * 0.9,
-  delay: Math.random() * 500,
-  opacity: 0.5 + Math.random() * 0.4,
+  // 大きめサイズ: 50〜130px（重なり合って画面を覆う）
+  size: 50 + Math.random() * 80,
+  // 右側からスプレー
+  startX: SW * 0.5 + Math.random() * SW * 0.6,
+  startY: SH * 0.02 + Math.random() * SH * 0.96,
+  // 画面全体に均等に散る
+  endX: -SW * 0.05 + Math.random() * SW * 1.1,
+  endY: SH * 0.02 + Math.random() * SH * 0.96,
+  // 2波に分けて噴射（0-300ms, 300-600ms）
+  delay: Math.random() * 600,
+  // 高い不透明度で真っ白に
+  opacity: 0.85 + Math.random() * 0.15,
 }));
 
 // ─── Water drip trails (水滴) ───
@@ -42,6 +44,9 @@ const DRIPS = Array.from({ length: DRIP_COUNT }, (_, i) => ({
 }));
 
 export default function SplashScreen({ onFinish }: Props) {
+  // ─── Guard: prevent double-run in React Strict Mode ───
+  const hasRun = useRef(false);
+
   // ─── Overall ───
   const overallFade = useRef(new Animated.Value(1)).current;
 
@@ -95,6 +100,10 @@ export default function SplashScreen({ onFinish }: Props) {
   const dotsOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Strict Modeでの二重実行を防止
+    if (hasRun.current) return;
+    hasRun.current = true;
+
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     // =========================================
@@ -131,8 +140,8 @@ export default function SplashScreen({ onFinish }: Props) {
     });
 
     // =========================================
-    // PHASE 2: Water rinse (t=1000ms)
-    // 水が上から流れて泡を洗い流す
+    // PHASE 2: Water rinse (t=1200ms)
+    // 泡で真っ白になった後、水が上から流れて洗い流す
     // =========================================
     const waterTimer = setTimeout(() => {
       // Show water curtain
@@ -192,14 +201,15 @@ export default function SplashScreen({ onFinish }: Props) {
           useNativeDriver: true,
         }).start();
       }, 1000);
-    }, 1000);
+    }, 1200);
     timers.push(waterTimer);
 
     // =========================================
-    // PHASE 3: Logo reveal (t=2000ms)
+    // PHASE 3: Logo reveal (t=2400ms)
     // 洗い終わった後にピカピカのロゴが現れる
     // =========================================
     const logoTimer = setTimeout(() => {
+      // t=2400ms
       Animated.parallel([
         Animated.spring(logoScale, {
           toValue: 1,
@@ -238,28 +248,28 @@ export default function SplashScreen({ onFinish }: Props) {
       // Cleanup glow on exit
       const stopGlow = setTimeout(() => glow.stop(), 2000);
       timers.push(stopGlow);
-    }, 2000);
+    }, 2400);
     timers.push(logoTimer);
 
-    // ─── Shine sweep (t=2400ms) ───
+    // ─── Shine sweep (t=2800ms) ───
     const shineTimer = setTimeout(() => {
       Animated.sequence([
         Animated.timing(shineOpacity, { toValue: 0.8, duration: 80, useNativeDriver: true }),
         Animated.timing(shineX, { toValue: 100, duration: 500, useNativeDriver: true }),
         Animated.timing(shineOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
       ]).start();
-    }, 2400);
+    }, 2800);
     timers.push(shineTimer);
 
     // =========================================
-    // PHASE 4: Title + tagline (t=2500ms)
+    // PHASE 4: Title + tagline (t=2900ms)
     // =========================================
     const titleTimer = setTimeout(() => {
       Animated.parallel([
         Animated.spring(titleOpacity, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }),
         Animated.spring(titleY, { toValue: 0, tension: 50, friction: 8, useNativeDriver: true }),
       ]).start();
-    }, 2500);
+    }, 2900);
     timers.push(titleTimer);
 
     const tagTimer = setTimeout(() => {
@@ -267,17 +277,17 @@ export default function SplashScreen({ onFinish }: Props) {
         Animated.timing(taglineOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.timing(taglineY, { toValue: 0, duration: 400, useNativeDriver: true }),
       ]).start();
-    }, 2800);
+    }, 3200);
     timers.push(tagTimer);
 
-    // ─── Bottom dots (t=3000ms) ───
+    // ─── Bottom dots (t=3400ms) ───
     const dotsTimer = setTimeout(() => {
       Animated.timing(dotsOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
-    }, 3000);
+    }, 3400);
     timers.push(dotsTimer);
 
     // =========================================
-    // PHASE 5: Exit (t=3800ms)
+    // PHASE 5: Exit (t=4200ms)
     // =========================================
     const exitTimer = setTimeout(() => {
       Animated.timing(overallFade, {
@@ -285,7 +295,7 @@ export default function SplashScreen({ onFinish }: Props) {
         duration: 500,
         useNativeDriver: true,
       }).start(() => onFinish());
-    }, 3800);
+    }, 4200);
     timers.push(exitTimer);
 
     return () => timers.forEach(clearTimeout);
@@ -503,21 +513,20 @@ const styles = StyleSheet.create({
   },
   foamBubble: {
     position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-    // subtle shadow for depth
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(230,240,255,0.6)',
     shadowColor: '#fff',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 3,
   },
   foamHighlight: {
     position: 'absolute',
-    top: '15%' as any,
-    left: '20%' as any,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    top: '12%' as any,
+    left: '15%' as any,
+    backgroundColor: 'rgba(255,255,255,1)',
   },
 
   // ── Water curtain ──
