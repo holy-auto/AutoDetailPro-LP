@@ -1,9 +1,10 @@
 import { supabase } from './supabase';
-import { processCancellation } from './stripe';
+import { processCancellation, calculateFeeBreakdown } from './stripe';
 import {
   ORDER_STATUS,
   CANCELLATION,
   COMPLETION,
+  PLATFORM_FEE,
   type OrderStatus,
   type PaymentMethod,
 } from '@/constants/business-rules';
@@ -106,13 +107,21 @@ export async function createOrder(
       return { success: false, error: '位置情報が不正です' };
     }
 
+    // Calculate fee breakdown
+    const customerFee = Math.round(amount * PLATFORM_FEE.CUSTOMER_PERCENT / 100);
+    const customerTotal = amount + customerFee;
+    const proFee = Math.round(amount * PLATFORM_FEE.PRO_PERCENT / 100);
+
     const { data, error } = await supabase
       .from('orders')
       .insert({
         customer_id: customerId,
         menu_ids: menuIds,
         payment_method: paymentMethod,
-        amount,
+        amount,                        // 基本料金
+        customer_fee: customerFee,     // お客様手数料 (5%)
+        customer_total: customerTotal, // お客様支払い総額
+        pro_fee: proFee,               // プロ手数料 (5%)
         location_lat: location.lat,
         location_lng: location.lng,
         location_address: location.address ?? null,

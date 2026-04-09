@@ -135,9 +135,14 @@ Deno.serve(async (req) => {
 
     // -----------------------------------------------------------------------
     // create_payment_intent — Create PI with manual capture (pre-auth)
+    // amount = お客様支払い総額 (基本料金 + 5%手数料)
+    // base_amount = 基本料金, customer_fee = お客様手数料
     // -----------------------------------------------------------------------
     if (action === 'create_payment_intent') {
-      const { order_id, amount, currency = 'jpy', customer_id, capture_method = 'manual' } = body;
+      const {
+        order_id, amount, base_amount, customer_fee,
+        currency = 'jpy', customer_id, capture_method = 'manual',
+      } = body;
 
       if (!order_id || !amount) {
         return errorResponse('order_id and amount are required');
@@ -156,14 +161,18 @@ Deno.serve(async (req) => {
           order_id,
           customer_id: customer_id ?? '',
           platform: 'mobile_wash',
+          base_amount: String(base_amount ?? amount),
+          customer_fee: String(customer_fee ?? 0),
         },
       });
 
-      // Save PI ID to the order
+      // Save PI ID and fee breakdown to the order
       await supabase
         .from('orders')
         .update({
           stripe_payment_intent_id: paymentIntent.id,
+          customer_fee: customer_fee ?? 0,
+          customer_total: amount,
         })
         .eq('id', order_id);
 
@@ -220,28 +229,55 @@ Deno.serve(async (req) => {
     }
 
     // -----------------------------------------------------------------------
-    // transfer — Transfer funds to a connected account
+    // transfer — Transfer funds to a connected account (手数料差引後)
+    // base_amount = 基本料金, payout_schedule = instant/weekly/monthly
+    // プロ受取額 = base_amount - 5%プロ手数料 - 振込手数料(即時:3%)
     // -----------------------------------------------------------------------
     if (action === 'transfer') {
-      const { order_id, destination, amount, currency = 'jpy' } = body;
+      const {
+        order_id, destination, base_amount,
+        payout_schedule = 'weekly', currency = 'jpy',
+      } = body;
 
-      if (!destination || !amount) {
-        return errorResponse('destination and amount are required');
+      if (!destination || !base_amount) {
+        return errorResponse('destination and base_amount are required');
       }
 
+      if (!Number.isInteger(base_amount) || base_amount <= 0) {
+        return errorResponse('base_amount must be a positive integer');
+      }
+
+      // --- Fee calculation (server-side, authoritative) ---
+      const PRO_FEE_PERCENT = 5;
+      const PAYOUT_FEE_RATES: Record<string, number> = {
+        instant: 3,
+        weekly: 0,
+        monthly: 0,
+      };
+
+      const proFee = Math.round(base_amount * PRO_FEE_PERCENT / 100);
+      const afterPlatformFee = base_amount - proFee;
+      const payoutFeePercent = PAYOUT_FEE_RATES[payout_schedule] ?? 0;
+      const payoutFee = Math.round(afterPlatformFee * payoutFeePercent / 100);
+      const proPayoutAmount = afterPlatformFee - payoutFee;
+      const totalFee = proFee + payoutFee;
+
       const transfer = await stripe.transfers.create({
-        amount,
+        amount: proPayoutAmount,
         currency,
         destination,
         metadata: {
           order_id: order_id ?? '',
           platform: 'mobile_wash',
+          base_amount: String(base_amount),
+          pro_fee: String(proFee),
+          payout_fee: String(payoutFee),
+          payout_schedule,
         },
       });
 
       // Record the transfer in the payouts table
       if (order_id) {
-        // Determine the pro_id from the connected account
         const { data: kyc } = await supabase
           .from('kyc_verifications')
           .select('user_id')
@@ -252,9 +288,12 @@ Deno.serve(async (req) => {
           await supabase.from('payouts').insert({
             pro_id: kyc.user_id,
             order_id,
-            amount,
-            fee: 0,
-            schedule: 'instant',
+            amount: proPayoutAmount,
+            base_amount,
+            pro_fee: proFee,
+            payout_fee: payoutFee,
+            fee: totalFee,
+            schedule: payout_schedule,
             status: 'paid',
             stripe_transfer_id: transfer.id,
             paid_at: new Date().toISOString(),
@@ -262,11 +301,98 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Update order with pro fee breakdown
+      if (order_id) {
+        await supabase
+          .from('orders')
+          .update({
+            pro_fee: proFee,
+            payout_fee: payoutFee,
+            pro_payout: proPayoutAmount,
+          })
+          .eq('id', order_id);
+      }
+
       return jsonResponse({
         transfer_id: transfer.id,
-        amount: transfer.amount,
+        amount: proPayoutAmount,
+        base_amount,
+        pro_fee: proFee,
+        payout_fee: payoutFee,
         destination: transfer.destination,
         status: 'paid',
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // refund — Refund a captured Payment Intent (full or partial)
+    // -----------------------------------------------------------------------
+    if (action === 'refund') {
+      const { payment_intent_id, amount, reason } = body;
+
+      if (!payment_intent_id) {
+        return errorResponse('payment_intent_id is required');
+      }
+
+      const refundParams: Record<string, unknown> = {
+        payment_intent: payment_intent_id,
+      };
+      if (amount !== undefined && amount !== null) {
+        refundParams.amount = amount;
+      }
+      if (reason) {
+        refundParams.metadata = { reason };
+      }
+
+      const refund = await stripe.refunds.create(refundParams);
+
+      return jsonResponse({
+        refund_id: refund.id,
+        status: refund.status,
+        amount: refund.amount,
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // cash_settlement — Process cash settlement for pro
+    // -----------------------------------------------------------------------
+    if (action === 'cash_settlement') {
+      const { pro_id, order_id, amount } = body;
+
+      if (!pro_id || !order_id || !amount) {
+        return errorResponse('pro_id, order_id, and amount are required');
+      }
+
+      // For cash orders, platform fee is deducted from future card earnings
+      const PRO_FEE_PERCENT = 5;
+      const proFee = Math.round(amount * PRO_FEE_PERCENT / 100);
+
+      // Record cash settlement with fee info
+      await supabase.from('cash_settlements').insert({
+        pro_id,
+        order_id,
+        amount,
+        pro_fee: proFee,
+        net_amount: amount - proFee,
+        status: 'pending_offset',
+        created_at: new Date().toISOString(),
+      });
+
+      // Update order with fee breakdown
+      await supabase
+        .from('orders')
+        .update({
+          pro_fee: proFee,
+          pro_payout: amount - proFee,
+        })
+        .eq('id', order_id);
+
+      return jsonResponse({
+        order_id,
+        amount,
+        pro_fee: proFee,
+        net_amount: amount - proFee,
+        status: 'pending_offset',
       });
     }
 

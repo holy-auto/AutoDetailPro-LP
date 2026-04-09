@@ -148,6 +148,13 @@ export const REFUND = {
   DEFAULT_REJECT: { label: '基本的に返金不可' },
 } as const;
 
+// --- Platform Fee (決済手数料) ---
+export const PLATFORM_FEE = {
+  CUSTOMER_PERCENT: 5,  // お客様負担 5%
+  PRO_PERCENT: 5,       // プロ負担 5%
+  TOTAL_PERCENT: 10,    // 合計 10%
+} as const;
+
 // --- Payment ---
 export const PAYMENT_METHOD = {
   ONLINE: 'online',
