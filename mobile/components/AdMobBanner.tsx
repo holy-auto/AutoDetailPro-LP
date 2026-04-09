@@ -1,49 +1,22 @@
-import { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
-import { AdUnitIds, shouldHideAds } from '@/lib/admob';
-import { Spacing } from '@/constants/colors';
+import { View } from 'react-native';
+import { shouldHideAds } from '@/lib/admob';
 
 // =============================================
-// AdMobBanner — Google AdMob バナー広告
+// AdMobBanner — スタブ版
 // =============================================
-// 使い方: <AdMobBanner size="BANNER" />
-// ホーム画面下部やフィード内に配置
+// react-native-google-mobile-ads 導入後に実装版に差し替え。
+// 現在は何も表示しない。
 
 type Props = {
-  size?: keyof typeof BannerAdSize;
+  size?: string;
   isSubscriber?: boolean;
   style?: any;
 };
 
 export default function AdMobBanner({
-  size = 'ANCHORED_ADAPTIVE_BANNER',
   isSubscriber = false,
-  style,
 }: Props) {
-  const [failed, setFailed] = useState(false);
-
-  // サブスク会員は非表示
   if (shouldHideAds(isSubscriber)) return null;
-  if (failed) return null;
-
-  return (
-    <View style={[styles.container, style]}>
-      <BannerAd
-        unitId={AdUnitIds.banner}
-        size={BannerAdSize[size]}
-        requestOptions={{
-          keywords: ['car wash', 'auto detailing', 'car care', 'coating'],
-        }}
-        onAdFailedToLoad={() => setFailed(true)}
-      />
-    </View>
-  );
+  // スタブ: AdMob SDK導入まで何も表示しない
+  return null;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    marginVertical: Spacing.sm,
-  },
-});

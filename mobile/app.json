@@ -43,14 +43,7 @@
       "expo-apple-authentication",
       "expo-location",
       "expo-secure-store",
-      "expo-notifications",
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY",
-          "iosAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~ZZZZZZZZZZ"
-        }
-      ]
+      "expo-notifications"
     ]
   }
 }
