@@ -132,9 +132,9 @@ export async function getMyFavorites(
           entry.count += 1;
           aggMap.set(r.target_id, entry);
         }
-        for (const [id, entry] of aggMap) {
+        aggMap.forEach((entry, id) => {
           ratingMap.set(id, Math.round((entry.sum / entry.count) * 10) / 10);
-        }
+        });
       }
     }
 
