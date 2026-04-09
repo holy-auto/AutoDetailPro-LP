@@ -8,6 +8,7 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  InteractionManager,
   Platform,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Circle } from 'react-native-maps';
@@ -115,6 +116,7 @@ export default function CustomerHome() {
   const [userLocation, setUserLocation] = useState<Coords>(DEFAULT_LOCATION);
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [selectedProId, setSelectedProId] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -122,6 +124,14 @@ export default function CustomerHome() {
       setUserLocation(coords);
       setLoadingLocation(false);
     })();
+  }, []);
+
+  // Defer map rendering until navigation transition completes for smoother UX
+  useEffect(() => {
+    const handle = InteractionManager.runAfterInteractions(() => {
+      setMapReady(true);
+    });
+    return () => handle.cancel();
   }, []);
 
   const handleCallPro = () => {
@@ -185,10 +195,12 @@ export default function CustomerHome() {
 
         {/* Map */}
         <View style={styles.mapContainer}>
-          {loadingLocation ? (
+          {loadingLocation || !mapReady ? (
             <View style={styles.mapLoading}>
               <ActivityIndicator size="large" color={Colors.primary} />
-              <Text style={styles.mapLoadingText}>位置情報を取得中...</Text>
+              <Text style={styles.mapLoadingText}>
+                {loadingLocation ? '位置情報を取得中...' : '地図を読み込み中...'}
+              </Text>
             </View>
           ) : (
             <MapView

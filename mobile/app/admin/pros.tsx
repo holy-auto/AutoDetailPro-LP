@@ -260,6 +260,8 @@ export default function AdminProsScreen() {
         data={filteredPros}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        removeClippedSubviews
+        windowSize={7}
         renderItem={({ item: pro }) => {
           const statusConfig = STATUS_CONFIG[pro.status];
           return (

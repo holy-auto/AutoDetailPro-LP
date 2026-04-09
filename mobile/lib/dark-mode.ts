@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, createElement } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '@/constants/colors';
 
@@ -103,7 +103,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setIsDark((prev) => {
       const next = !prev;
       AsyncStorage.setItem(STORAGE_KEY, next ? 'dark' : 'light').catch(
@@ -111,15 +111,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       );
       return next;
     });
-  };
+  }, []);
 
-  const colors = getThemeColors(isDark);
+  // Memoize context value to prevent unnecessary consumer re-renders
+  const contextValue = useMemo(
+    () => ({ isDark, toggleTheme, colors: getThemeColors(isDark) }),
+    [isDark, toggleTheme],
+  );
 
-  // Use createElement to avoid JSX (pure .ts file)
-  const { createElement } = require('react');
   return createElement(
     ThemeContext.Provider,
-    { value: { isDark, toggleTheme, colors } },
+    { value: contextValue },
     children,
   );
 }

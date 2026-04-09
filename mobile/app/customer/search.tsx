@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -70,23 +70,72 @@ const MOCK_RESULTS = [
   },
 ];
 
+const keyExtractor = (item: (typeof MOCK_RESULTS)[number]) => item.id;
+
+const ProCard = memo(({ pro, onCallPro }: { pro: (typeof MOCK_RESULTS)[number]; onCallPro: () => void }) => (
+  <TouchableOpacity style={styles.resultCard}>
+    <View style={styles.resultHeader}>
+      <View style={styles.resultAvatar}>
+        <Ionicons name="person" size={24} color={Colors.primaryMedium} />
+      </View>
+      <View style={styles.resultInfo}>
+        <Text style={styles.resultName}>{pro.name}</Text>
+        <View style={styles.resultMeta}>
+          <Ionicons name="star" size={14} color={Colors.gold} />
+          <Text style={styles.resultRating}>
+            {pro.rating} ({pro.reviews}件)
+          </Text>
+          <Text style={styles.resultDivider}>|</Text>
+          <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
+          <Text style={styles.resultDistance}>{pro.distance}</Text>
+        </View>
+      </View>
+      <Text style={styles.resultPrice}>{pro.price}</Text>
+    </View>
+
+    <View style={styles.menuList}>
+      {pro.menus.map((menu, idx) => (
+        <View key={idx} style={styles.menuItem}>
+          <Text style={styles.menuName}>{menu.name}</Text>
+          <Text style={styles.menuPrice}>¥{menu.price.toLocaleString()}</Text>
+        </View>
+      ))}
+    </View>
+
+    <TouchableOpacity style={styles.callButton} onPress={onCallPro}>
+      <Ionicons name="car-sport" size={18} color={Colors.white} />
+      <Text style={styles.callButtonText}>このプロを呼ぶ</Text>
+    </TouchableOpacity>
+  </TouchableOpacity>
+));
+
 export default function SearchScreen() {
   const { requireAuth } = useAuth();
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const filteredResults = MOCK_RESULTS.filter((pro) => {
-    if (selectedCategory) {
-      return pro.categories.includes(selectedCategory);
-    }
-    if (query) {
-      return (
-        pro.name.includes(query) ||
-        pro.menus.some((m) => m.name.includes(query))
-      );
-    }
-    return true;
-  });
+  const renderProCard = useCallback(
+    ({ item }: { item: (typeof MOCK_RESULTS)[number] }) => (
+      <ProCard pro={item} onCallPro={requireAuth} />
+    ),
+    [requireAuth],
+  );
+
+  const filteredResults = useMemo(() =>
+    MOCK_RESULTS.filter((pro) => {
+      if (selectedCategory) {
+        return pro.categories.includes(selectedCategory);
+      }
+      if (query) {
+        return (
+          pro.name.includes(query) ||
+          pro.menus.some((m) => m.name.includes(query))
+        );
+      }
+      return true;
+    }),
+    [query, selectedCategory],
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -161,47 +210,12 @@ export default function SearchScreen() {
 
       <FlatList
         data={filteredResults}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.resultsList}
-        renderItem={({ item: pro }) => (
-          <TouchableOpacity style={styles.resultCard}>
-            <View style={styles.resultHeader}>
-              <View style={styles.resultAvatar}>
-                <Ionicons name="person" size={24} color={Colors.primaryMedium} />
-              </View>
-              <View style={styles.resultInfo}>
-                <Text style={styles.resultName}>{pro.name}</Text>
-                <View style={styles.resultMeta}>
-                  <Ionicons name="star" size={14} color={Colors.gold} />
-                  <Text style={styles.resultRating}>
-                    {pro.rating} ({pro.reviews}件)
-                  </Text>
-                  <Text style={styles.resultDivider}>|</Text>
-                  <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
-                  <Text style={styles.resultDistance}>{pro.distance}</Text>
-                </View>
-              </View>
-              <Text style={styles.resultPrice}>{pro.price}</Text>
-            </View>
-
-            <View style={styles.menuList}>
-              {pro.menus.map((menu, idx) => (
-                <View key={idx} style={styles.menuItem}>
-                  <Text style={styles.menuName}>{menu.name}</Text>
-                  <Text style={styles.menuPrice}>¥{menu.price.toLocaleString()}</Text>
-                </View>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              style={styles.callButton}
-              onPress={() => requireAuth()}
-            >
-              <Ionicons name="car-sport" size={18} color={Colors.white} />
-              <Text style={styles.callButtonText}>このプロを呼ぶ</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        )}
+        renderItem={renderProCard}
+        removeClippedSubviews
+        maxToRenderPerBatch={5}
+        windowSize={5}
       />
     </SafeAreaView>
   );

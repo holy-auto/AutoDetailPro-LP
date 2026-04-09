@@ -191,6 +191,8 @@ export default function AdminKycScreen() {
         data={filteredSubmissions}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        removeClippedSubviews
+        windowSize={7}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="document-text-outline" size={48} color={Colors.textMuted} />

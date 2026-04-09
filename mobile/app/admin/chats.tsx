@@ -244,6 +244,8 @@ export default function AdminChatsScreen() {
         data={filteredRooms}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        removeClippedSubviews
+        windowSize={7}
         renderItem={({ item: room }) => (
           <TouchableOpacity
             style={[styles.roomCard, room.flagged && styles.roomCardFlagged]}
