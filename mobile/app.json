@@ -45,7 +45,12 @@
       "expo-apple-authentication",
       "expo-location",
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      ["expo-splash-screen", {
+        "image": "./assets/splash.png",
+        "backgroundColor": "#1E3A5F",
+        "imageResizeMode": "contain"
+      }]
     ]
   }
 }
