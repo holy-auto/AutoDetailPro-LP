@@ -15,23 +15,29 @@ const { width: SW, height: SH } = Dimensions.get('window');
 
 type Props = { onFinish: () => void };
 
-// ─── Foam bubbles (泡) — 画面が真っ白になるくらい大量 ───
-const FOAM_COUNT = 35;
-const FOAM = Array.from({ length: FOAM_COUNT }, (_, i) => ({
-  id: i,
-  // 大きめサイズ: 50〜130px（重なり合って画面を覆う）
-  size: 50 + Math.random() * 80,
-  // 右側からスプレー
-  startX: SW * 0.5 + Math.random() * SW * 0.6,
-  startY: SH * 0.02 + Math.random() * SH * 0.96,
-  // 画面全体に均等に散る
-  endX: -SW * 0.05 + Math.random() * SW * 1.1,
-  endY: SH * 0.02 + Math.random() * SH * 0.96,
-  // 2波に分けて噴射（0-300ms, 300-600ms）
-  delay: Math.random() * 600,
-  // 高い不透明度で真っ白に
-  opacity: 0.85 + Math.random() * 0.15,
-}));
+// ─── Module-level guard: survives React Strict Mode remounts ───
+let _animationStarted = false;
+
+// ─── Foam bubbles (泡) — グリッド配置で画面を完全に覆う ───
+// Grid-based: divide screen into cells, place a bubble in each cell
+const GRID_COLS = 6;
+const GRID_ROWS = 10;
+const CELL_W = SW / GRID_COLS;
+const CELL_H = SH / GRID_ROWS;
+const FOAM_GRID = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => {
+  const col = i % GRID_COLS;
+  const row = Math.floor(i / GRID_COLS);
+  return {
+    id: i,
+    size: Math.max(CELL_W, CELL_H) * 1.4 + Math.random() * 30,
+    startX: SW + Math.random() * SW * 0.3,
+    startY: row * CELL_H + CELL_H * 0.5 + (Math.random() - 0.5) * CELL_H * 0.3,
+    endX: col * CELL_W + CELL_W * 0.5 + (Math.random() - 0.5) * CELL_W * 0.3,
+    endY: row * CELL_H + CELL_H * 0.5 + (Math.random() - 0.5) * CELL_H * 0.3,
+    delay: Math.random() * 500,
+    opacity: 0.93 + Math.random() * 0.07,
+  };
+});
 
 // ─── Water drip trails (水滴) ───
 const DRIP_COUNT = 12;
@@ -44,16 +50,16 @@ const DRIPS = Array.from({ length: DRIP_COUNT }, (_, i) => ({
 }));
 
 export default function SplashScreen({ onFinish }: Props) {
-  // ─── Guard: prevent double-run in React Strict Mode ───
-  const hasRun = useRef(false);
-
   // ─── Overall ───
   const overallFade = useRef(new Animated.Value(1)).current;
+
+  // ─── Solid white overlay that fades in to guarantee full coverage ───
+  const foamOverlayOpacity = useRef(new Animated.Value(0)).current;
 
   // ─── Phase 1: Foam spray ───
   const foamAnims = useMemo(
     () =>
-      FOAM.map(() => ({
+      FOAM_GRID.map(() => ({
         translateX: new Animated.Value(0),
         translateY: new Animated.Value(0),
         scale: new Animated.Value(0),
@@ -100,17 +106,26 @@ export default function SplashScreen({ onFinish }: Props) {
   const dotsOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Strict Modeでの二重実行を防止
-    if (hasRun.current) return;
-    hasRun.current = true;
+    // Module-level guard: survives React Strict Mode full remounts
+    if (_animationStarted) return;
+    _animationStarted = true;
 
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     // =========================================
     // PHASE 1: Foam spray (t=0 ~ 800ms)
-    // 泡が右側からスプレーのように飛んでくる
+    // 泡が右側からスプレーのように飛んでくる + 白オーバーレイ
     // =========================================
-    FOAM.forEach((f, i) => {
+
+    // Solid white overlay fades in alongside bubbles for guaranteed coverage
+    Animated.timing(foamOverlayOpacity, {
+      toValue: 1,
+      duration: 700,
+      delay: 200,
+      useNativeDriver: true,
+    }).start();
+
+    FOAM_GRID.forEach((f, i) => {
       const t = setTimeout(() => {
         Animated.parallel([
           Animated.timing(foamAnims[i].translateX, {
@@ -158,13 +173,20 @@ export default function SplashScreen({ onFinish }: Props) {
         useNativeDriver: true,
       }).start();
 
-      // Foam fades as water passes
+      // Foam + overlay fade as water passes
       setTimeout(() => {
-        Animated.timing(foamGroupOpacity, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }).start();
+        Animated.parallel([
+          Animated.timing(foamGroupOpacity, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(foamOverlayOpacity, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]).start();
       }, 300);
 
       // Water drip trails
@@ -319,10 +341,15 @@ export default function SplashScreen({ onFinish }: Props) {
         <View style={styles.bgCircle2} />
 
         {/* ================================================
-            LAYER 1: Foam bubbles (泡スプレー)
+            LAYER 1: Foam bubbles (泡スプレー) + white overlay
             ================================================ */}
+        {/* Solid white overlay — guarantees full white coverage */}
+        <Animated.View
+          style={[styles.foamOverlay, { opacity: foamOverlayOpacity }]}
+        />
+
         <Animated.View style={[styles.foamLayer, { opacity: foamGroupOpacity }]}>
-          {FOAM.map((f, i) => (
+          {FOAM_GRID.map((f, i) => (
             <Animated.View
               key={f.id}
               style={[
@@ -504,6 +531,13 @@ const styles = StyleSheet.create({
     height: SW * 0.5,
     borderRadius: SW * 0.25,
     backgroundColor: 'rgba(59,130,246,0.03)',
+  },
+
+  // ── Foam solid overlay (guarantees full white) ──
+  foamOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
+    zIndex: 9,
   },
 
   // ── Foam layer ──
