@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, verifyAdmin } from './supabase';
 import { CHAT, ORDER_STATUS } from '@/constants/business-rules';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -93,8 +93,12 @@ export async function sendMessage(
   messageType: string = 'text',
 ): Promise<Result<{ messageId: string; flagged: boolean }>> {
   try {
-    // メッセージ長チェック
-    if (message.length > CHAT.MAX_MESSAGE_LENGTH) {
+    // メッセージバリデーション
+    const trimmed = message.trim();
+    if (trimmed.length === 0) {
+      return { success: false, error: 'メッセージを入力してください' };
+    }
+    if (trimmed.length > CHAT.MAX_MESSAGE_LENGTH) {
       return {
         success: false,
         error: `メッセージは${CHAT.MAX_MESSAGE_LENGTH}文字以内で入力してください`,
@@ -147,12 +151,15 @@ export async function getMessages(
   before?: string,
 ): Promise<Result<ChatMessage[]>> {
   try {
+    // Cap the limit to prevent excessive data fetching
+    const safeLimit = Math.min(Math.max(1, limit), 100);
+
     let query = supabase
       .from('chat_messages')
       .select('*')
       .eq('room_id', roomId)
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(safeLimit);
 
     if (before) {
       query = query.lt('created_at', before);
@@ -234,10 +241,15 @@ export function checkNgWords(text: string): NgCheckResult {
  */
 export async function flagRoom(
   roomId: string,
-  adminId: string,
   reason: string,
 ): Promise<Result<{ roomId: string }>> {
   try {
+    // Verify caller is an authenticated admin
+    const adminId = await verifyAdmin();
+    if (!adminId) {
+      return { success: false, error: '管理者権限が必要です' };
+    }
+
     const { error } = await supabase
       .from('chat_rooms')
       .update({
@@ -267,10 +279,23 @@ export async function flagRoom(
  */
 export async function sendAdminMessage(
   roomId: string,
-  adminId: string,
   message: string,
 ): Promise<Result<{ messageId: string }>> {
   try {
+    // Verify caller is an authenticated admin
+    const adminId = await verifyAdmin();
+    if (!adminId) {
+      return { success: false, error: '管理者権限が必要です' };
+    }
+
+    // Validate message length
+    if (message.length > CHAT.MAX_MESSAGE_LENGTH) {
+      return {
+        success: false,
+        error: `メッセージは${CHAT.MAX_MESSAGE_LENGTH}文字以内で入力してください`,
+      };
+    }
+
     const { data, error } = await supabase
       .from('chat_messages')
       .insert({

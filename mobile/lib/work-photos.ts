@@ -13,6 +13,11 @@ type Result<T = unknown> = {
   error?: string;
 };
 
+const ALLOWED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'heic', 'webp']);
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/heic', 'image/webp',
+]);
+
 type WorkPhoto = {
   id: string;
   order_id: string;
@@ -51,7 +56,7 @@ export async function uploadWorkPhoto(
       };
     }
 
-    // Read file and validate size
+    // Read file and validate size + type
     const response = await fetch(photoUri);
     const blob = await response.blob();
 
@@ -63,8 +68,22 @@ export async function uploadWorkPhoto(
       };
     }
 
-    // Determine file extension from URI or default to jpg
+    // Validate MIME type
+    if (blob.type && !ALLOWED_MIME_TYPES.has(blob.type)) {
+      return {
+        success: false,
+        error: '許可されていないファイル形式です（JPG, PNG, HEIC, WebPのみ）',
+      };
+    }
+
+    // Determine file extension from URI or default to jpg, validate it
     const extension = photoUri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    if (!ALLOWED_IMAGE_EXTENSIONS.has(extension)) {
+      return {
+        success: false,
+        error: '許可されていないファイル形式です（JPG, PNG, HEIC, WebPのみ）',
+      };
+    }
     const fileName = `${orderId}/${photoType}_${Date.now()}.${extension}`;
 
     // Upload to Supabase Storage
@@ -141,13 +160,15 @@ export async function getProPortfolio(
   limit: number = 20,
 ): Promise<Result<WorkPhoto[]>> {
   try {
+    const safeLimit = Math.min(Math.max(1, limit), 50);
+
     const { data, error } = await supabase
       .from('work_photos')
       .select('*')
       .eq('pro_id', proId)
       .eq('is_public', true)
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(safeLimit);
 
     if (error) return { success: false, error: error.message };
 
@@ -163,15 +184,22 @@ export async function getProPortfolio(
 
 export async function togglePhotoPublic(
   photoId: string,
+  proId: string,
   isPublic: boolean,
 ): Promise<Result<{ photoId: string; isPublic: boolean }>> {
   try {
-    const { error } = await supabase
+    // Ownership check: only the photo's pro can toggle visibility
+    const { data, error } = await supabase
       .from('work_photos')
       .update({ is_public: isPublic })
-      .eq('id', photoId);
+      .eq('id', photoId)
+      .eq('pro_id', proId)
+      .select('id')
+      .single();
 
-    if (error) return { success: false, error: error.message };
+    if (error || !data) {
+      return { success: false, error: '写真が見つからないか、操作権限がありません' };
+    }
 
     return { success: true, data: { photoId, isPublic } };
   } catch (e) {
@@ -185,17 +213,19 @@ export async function togglePhotoPublic(
 
 export async function deletePhoto(
   photoId: string,
+  proId: string,
 ): Promise<Result<{ photoId: string }>> {
   try {
-    // Fetch the photo record to get the storage path
+    // Fetch the photo record with ownership check
     const { data: photo, error: fetchErr } = await supabase
       .from('work_photos')
       .select('photo_url')
       .eq('id', photoId)
+      .eq('pro_id', proId)
       .single();
 
     if (fetchErr) return { success: false, error: fetchErr.message };
-    if (!photo) return { success: false, error: '写真が見つかりません' };
+    if (!photo) return { success: false, error: '写真が見つからないか、操作権限がありません' };
 
     // Extract the storage path from the public URL
     // URL format: .../storage/v1/object/public/work-photos/<path>
@@ -207,11 +237,12 @@ export async function deletePhoto(
       await supabase.storage.from('work-photos').remove([storagePath]);
     }
 
-    // Delete DB record
+    // Delete DB record (with ownership re-check)
     const { error: deleteErr } = await supabase
       .from('work_photos')
       .delete()
-      .eq('id', photoId);
+      .eq('id', photoId)
+      .eq('pro_id', proId);
 
     if (deleteErr) return { success: false, error: deleteErr.message };
 

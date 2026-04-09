@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, verifyAdmin } from './supabase';
 import { ADS, type AdType, type AdPlacement, type ProAdPlanId } from '@/constants/business-rules';
 
 // =============================================
@@ -33,8 +33,14 @@ export async function createProAd(
     const plan = ADS.PRO_AD_PLANS.find((p) => p.id === planId);
     if (!plan) return { success: false, error: `不明なプラン: ${planId}` };
 
+    if (!options.title.trim()) {
+      return { success: false, error: 'タイトルを入力してください' };
+    }
     if (options.title.length > ADS.MAX_TEXT_LENGTH) {
       return { success: false, error: `タイトルは${ADS.MAX_TEXT_LENGTH}文字以内にしてください` };
+    }
+    if (options.description && options.description.length > 500) {
+      return { success: false, error: '説明文は500文字以内にしてください' };
     }
 
     const startsAt = new Date();
@@ -93,6 +99,14 @@ export async function createExternalAd(
   },
 ): Promise<MutationResult<{ adId: string }>> {
   try {
+    // Validate linkUrl is a proper URL
+    if (options.linkUrl && !/^https?:\/\/.+/.test(options.linkUrl)) {
+      return { success: false, error: 'リンクURLはhttp://またはhttps://で始まる必要があります' };
+    }
+    if (options.price < 0 || options.price > 100_000_000) {
+      return { success: false, error: '料金が不正です' };
+    }
+
     const { data, error } = await supabase
       .from('ads')
       .insert({
@@ -191,11 +205,16 @@ export async function trackAdEvent(
 
 export async function reviewAd(
   adId: string,
-  adminId: string,
   approved: boolean,
   rejectionReason?: string,
 ): Promise<MutationResult> {
   try {
+    // Verify caller is an authenticated admin
+    const adminId = await verifyAdmin();
+    if (!adminId) {
+      return { success: false, error: '管理者権限が必要です' };
+    }
+
     const { error } = await supabase
       .from('ads')
       .update({
@@ -216,13 +235,18 @@ export async function reviewAd(
       .single();
 
     if (ad) {
+      // Sanitize user content in notification body
+      const safeTitle = (ad.title as string).replace(/[\x00-\x1F\x7F]/g, '').slice(0, 50);
+      const safeReason = rejectionReason
+        ? rejectionReason.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 100)
+        : '';
       await supabase.from('notifications').insert({
         user_id: ad.advertiser_id,
         type: 'ad_review',
         title: approved ? '広告が承認されました' : '広告が却下されました',
         body: approved
-          ? `「${ad.title}」の掲載が開始されます。`
-          : `「${ad.title}」は掲載できません。理由: ${rejectionReason}`,
+          ? `「${safeTitle}」の掲載が開始されます。`
+          : `「${safeTitle}」は掲載できません。理由: ${safeReason}`,
         data: { ad_id: adId },
       });
     }
@@ -239,13 +263,17 @@ export async function reviewAd(
 
 export async function getMyAds(
   advertiserId: string,
+  limit: number = 50,
 ): Promise<MutationResult<any[]>> {
   try {
+    const safeLimit = Math.min(Math.max(1, limit), 100);
+
     const { data, error } = await supabase
       .from('ads')
       .select('*')
       .eq('advertiser_id', advertiserId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(safeLimit);
 
     if (error) return { success: false, error: error.message };
     return { success: true, data: data ?? [] };
@@ -260,6 +288,7 @@ export async function getMyAds(
 
 export async function getAdStats(
   adId: string,
+  advertiserId: string,
 ): Promise<MutationResult<{
   impressions: number;
   clicks: number;
@@ -271,9 +300,10 @@ export async function getAdStats(
       .from('ads')
       .select('impressions, clicks, price, pricing_model')
       .eq('id', adId)
+      .eq('advertiser_id', advertiserId)
       .single();
 
-    if (error || !ad) return { success: false, error: '広告が見つかりません' };
+    if (error || !ad) return { success: false, error: '広告が見つからないか、操作権限がありません' };
 
     const impressions = ad.impressions ?? 0;
     const clicks = ad.clicks ?? 0;
@@ -293,30 +323,36 @@ export async function getAdStats(
 // 8. pauseAd / resumeAd — 広告の一時停止/再開
 // ---------------------------------------------------------------------------
 
-export async function pauseAd(adId: string): Promise<MutationResult> {
+export async function pauseAd(adId: string, advertiserId: string): Promise<MutationResult> {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('ads')
       .update({ status: 'paused', updated_at: new Date().toISOString() })
       .eq('id', adId)
-      .eq('status', 'active');
+      .eq('advertiser_id', advertiserId)
+      .eq('status', 'active')
+      .select('id')
+      .single();
 
-    if (error) return { success: false, error: error.message };
+    if (error || !data) return { success: false, error: '広告が見つからないか、操作権限がありません' };
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
   }
 }
 
-export async function resumeAd(adId: string): Promise<MutationResult> {
+export async function resumeAd(adId: string, advertiserId: string): Promise<MutationResult> {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('ads')
       .update({ status: 'active', updated_at: new Date().toISOString() })
       .eq('id', adId)
-      .eq('status', 'paused');
+      .eq('advertiser_id', advertiserId)
+      .eq('status', 'paused')
+      .select('id')
+      .single();
 
-    if (error) return { success: false, error: error.message };
+    if (error || !data) return { success: false, error: '広告が見つからないか、操作権限がありません' };
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };

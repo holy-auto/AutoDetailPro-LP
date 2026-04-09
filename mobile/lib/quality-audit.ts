@@ -115,7 +115,17 @@ export async function submitAuditResponse(
       return { success: false, error: '回答期限が過ぎています' };
     }
 
-    // 2. 加重平均スコアを計算
+    // 2. Validate scores are integers 1-5
+    for (const [key, score] of Object.entries(response.scores)) {
+      if (!Number.isInteger(score) || score < 1 || score > 5) {
+        return {
+          success: false,
+          error: `スコアは1〜5の整数で入力してください（項目: ${key}, 値: ${score}）`,
+        };
+      }
+    }
+
+    // 3. 加重平均スコアを計算
     let totalWeight = 0;
     let weightedSum = 0;
     for (const item of QUALITY_AUDIT.CHECKLIST) {

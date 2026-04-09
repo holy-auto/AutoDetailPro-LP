@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, verifyAdmin } from './supabase';
 import { KYC } from '@/constants/business-rules';
 import { createConnectAccount } from './stripe-connect';
 
@@ -331,11 +331,16 @@ export async function resubmitKYC(
  */
 export async function adminReviewKYC(
   verificationId: string,
-  adminId: string,
   approved: boolean,
   rejectionReason?: string,
 ): Promise<Result<{ status: KYCStatus; stripeAccountCreated?: boolean }>> {
   try {
+    // Verify caller is an authenticated admin
+    const adminId = await verifyAdmin();
+    if (!adminId) {
+      return { success: false, error: '管理者権限が必要です' };
+    }
+
     if (!approved && !rejectionReason) {
       return { success: false, error: 'Rejection reason is required when rejecting.' };
     }

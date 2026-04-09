@@ -91,6 +91,21 @@ export async function createOrder(
   location: { lat: number; lng: number; address?: string }
 ): Promise<Result<{ orderId: string }>> {
   try {
+    // Input validation
+    if (!Number.isInteger(amount) || amount <= 0 || amount > 10_000_000) {
+      return { success: false, error: '金額が不正です（1〜10,000,000の整数）' };
+    }
+    if (!Array.isArray(menuIds) || menuIds.length === 0) {
+      return { success: false, error: 'メニューを選択してください' };
+    }
+    if (
+      typeof location.lat !== 'number' || typeof location.lng !== 'number' ||
+      location.lat < -90 || location.lat > 90 ||
+      location.lng < -180 || location.lng > 180
+    ) {
+      return { success: false, error: '位置情報が不正です' };
+    }
+
     const { data, error } = await supabase
       .from('orders')
       .insert({

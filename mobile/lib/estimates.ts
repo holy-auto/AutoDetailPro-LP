@@ -50,6 +50,11 @@ export async function createEstimate(
   options: EstimateOptions,
 ): Promise<Result<Estimate>> {
   try {
+    // Validate base price
+    if (!Number.isInteger(options.basePrice) || options.basePrice <= 0 || options.basePrice > 10_000_000) {
+      return { success: false, error: '基本価格が不正です（1〜10,000,000の整数）' };
+    }
+
     // Resolve vehicle-size multiplier
     const sizeEntry = VEHICLE.SIZES.find((s) => s.id === options.vehicleSize);
     if (!sizeEntry) {
@@ -141,16 +146,18 @@ export async function getEstimate(
 
 export async function confirmEstimate(
   estimateId: string,
+  customerId: string,
 ): Promise<Result<{ estimateId: string; orderId: string }>> {
   try {
-    // Fetch the estimate
+    // Fetch the estimate with ownership check
     const { data: estimate, error: fetchErr } = await supabase
       .from('estimates')
       .select('*')
       .eq('id', estimateId)
+      .eq('customer_id', customerId)
       .single();
 
-    if (fetchErr) return { success: false, error: fetchErr.message };
+    if (fetchErr) return { success: false, error: '見積もりが見つからないか、操作権限がありません' };
 
     if (estimate.status !== 'draft') {
       return {
@@ -214,13 +221,17 @@ export async function confirmEstimate(
 
 export async function getMyEstimates(
   customerId: string,
+  limit: number = 50,
 ): Promise<Result<Estimate[]>> {
   try {
+    const safeLimit = Math.min(Math.max(1, limit), 100);
+
     const { data, error } = await supabase
       .from('estimates')
       .select('*')
       .eq('customer_id', customerId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(safeLimit);
 
     if (error) return { success: false, error: error.message };
 

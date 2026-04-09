@@ -48,12 +48,17 @@ export async function submitReview(
   tags?: string[],
 ): Promise<Result<Review>> {
   try {
-    // Validate rating range
-    if (rating < REVIEW.MIN_RATING || rating > REVIEW.MAX_RATING) {
+    // Validate rating is an integer in the allowed range
+    if (!Number.isInteger(rating) || rating < REVIEW.MIN_RATING || rating > REVIEW.MAX_RATING) {
       return {
         success: false,
-        error: `評価は${REVIEW.MIN_RATING}〜${REVIEW.MAX_RATING}で指定してください`,
+        error: `評価は${REVIEW.MIN_RATING}〜${REVIEW.MAX_RATING}の整数で指定してください`,
       };
+    }
+
+    // Validate comment length
+    if (comment && comment.length > 1000) {
+      return { success: false, error: 'コメントは1000文字以内で入力してください' };
     }
 
     // Check eligibility
@@ -125,12 +130,15 @@ export async function submitReview(
         .eq('id', reviewerId);
     }
 
-    // Notify the target pro
+    // Notify the target pro (sanitize user content — truncate, strip control chars)
+    const safeComment = comment
+      ? comment.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 50)
+      : '';
     await supabase.from('notifications').insert({
       user_id: targetId,
       type: 'review_received',
       title: '新しいレビューが届きました',
-      body: `${rating}つ星のレビューをいただきました。${comment ? `「${comment.slice(0, 50)}${comment.length > 50 ? '...' : ''}」` : ''}`,
+      body: `${rating}つ星のレビューをいただきました。${safeComment ? `「${safeComment}${(comment?.length ?? 0) > 50 ? '...' : ''}」` : ''}`,
       data: { review_id: review.id, order_id: orderId, rating },
     });
 
@@ -149,6 +157,8 @@ export async function getProReviews(
   limit: number = 20,
 ): Promise<Result<ReviewWithReviewer[]>> {
   try {
+    const safeLimit = Math.min(Math.max(1, limit), 100);
+
     const { data, error } = await supabase
       .from('reviews')
       .select(`
@@ -157,7 +167,7 @@ export async function getProReviews(
       `)
       .eq('target_id', proId)
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(safeLimit);
 
     if (error) return { success: false, error: error.message };
 

@@ -289,12 +289,14 @@ export async function getMyNotifications(
   limit: number = 50,
 ): Promise<Result<Notification[]>> {
   try {
+    const safeLimit = Math.min(Math.max(1, limit), 100);
+
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(safeLimit);
 
     if (error) {
       return { success: false, error: error.message };

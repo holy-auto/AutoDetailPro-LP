@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, verifyAdmin } from './supabase';
 import { CORPORATE } from '@/constants/business-rules';
 
 // =============================================
@@ -298,18 +298,11 @@ export async function getCorporateDashboard(
 
 export async function approveCorporateAccount(
   corporateId: string,
-  adminId: string,
 ): Promise<Result<CorporateAccount>> {
   try {
-    // Verify the caller is a platform admin
-    const { data: adminProfile, error: adminErr } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', adminId)
-      .single();
-
-    if (adminErr) return { success: false, error: adminErr.message };
-    if (adminProfile?.role !== 'admin') {
+    // Verify caller is an authenticated admin
+    const adminId = await verifyAdmin();
+    if (!adminId) {
       return { success: false, error: '管理者権限が必要です' };
     }
 

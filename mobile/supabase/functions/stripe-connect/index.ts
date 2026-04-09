@@ -143,6 +143,11 @@ Deno.serve(async (req) => {
         return errorResponse('order_id and amount are required');
       }
 
+      // Validate amount is a positive integer within reasonable bounds (JPY, no decimals)
+      if (!Number.isInteger(amount) || amount <= 0 || amount > 10_000_000) {
+        return errorResponse('amount must be a positive integer (1–10,000,000)');
+      }
+
       const paymentIntent = await stripe.paymentIntents.create({
         amount,
         currency,
@@ -270,13 +275,24 @@ Deno.serve(async (req) => {
     // -----------------------------------------------------------------------
     return errorResponse(`Unknown action: ${action}`, 400);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Internal server error';
+    // Log the full error server-side for debugging
+    console.error('[stripe-connect] Error:', err);
 
-    // Surface Stripe-specific error details
+    // Return generic error messages to the client — never expose Stripe internals
     if ((err as any)?.type?.startsWith('Stripe')) {
-      return errorResponse((err as any).message, 402);
+      const stripeCode = (err as any)?.code;
+      // Map known Stripe error codes to safe user-facing messages
+      const safeMessages: Record<string, string> = {
+        card_declined: 'カードが拒否されました',
+        insufficient_funds: '残高が不足しています',
+        invalid_amount: '金額が不正です',
+        expired_card: 'カードの有効期限が切れています',
+        processing_error: '決済処理中にエラーが発生しました',
+      };
+      const safeMessage = safeMessages[stripeCode] ?? '決済処理中にエラーが発生しました';
+      return errorResponse(safeMessage, 402);
     }
 
-    return errorResponse(message, 500);
+    return errorResponse('サーバーエラーが発生しました', 500);
   }
 });
