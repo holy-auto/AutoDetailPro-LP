@@ -82,9 +82,6 @@ export default function SplashScreen({ onFinish }: Props) {
     [],
   );
 
-  // ─── Phase 2c: Foam fade-out (all at once when water hits) ───
-  const foamGroupOpacity = useRef(new Animated.Value(1)).current;
-
   // ─── Phase 3: Logo reveal ───
   const logoScale = useRef(new Animated.Value(0.5)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -173,21 +170,39 @@ export default function SplashScreen({ onFinish }: Props) {
         useNativeDriver: true,
       }).start();
 
-      // Foam + overlay fade as water passes
+      // Foam dissolves gradually: each bubble fades based on row (top→bottom)
+      // as the water curtain passes over them
       setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(foamGroupOpacity, {
-            toValue: 0,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(foamOverlayOpacity, {
-            toValue: 0,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }, 300);
+        // Overlay fades out slowly behind the bubbles
+        Animated.timing(foamOverlayOpacity, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }).start();
+
+        // Each bubble pops individually — top rows first, bottom rows last
+        FOAM_GRID.forEach((f, i) => {
+          const row = Math.floor(i / GRID_COLS);
+          // Stagger: ~0ms for top row, ~800ms for bottom row
+          const rowDelay = (row / GRID_ROWS) * 800 + Math.random() * 150;
+          const popTimer = setTimeout(() => {
+            Animated.parallel([
+              Animated.timing(foamAnims[i].opacity, {
+                toValue: 0,
+                duration: 300 + Math.random() * 200,
+                useNativeDriver: true,
+              }),
+              // Bubble shrinks as it pops
+              Animated.timing(foamAnims[i].scale, {
+                toValue: 0.3,
+                duration: 250,
+                useNativeDriver: true,
+              }),
+            ]).start();
+          }, rowDelay);
+          timers.push(popTimer);
+        });
+      }, 200);
 
       // Water drip trails
       DRIPS.forEach((d, i) => {
@@ -348,7 +363,7 @@ export default function SplashScreen({ onFinish }: Props) {
           style={[styles.foamOverlay, { opacity: foamOverlayOpacity }]}
         />
 
-        <Animated.View style={[styles.foamLayer, { opacity: foamGroupOpacity }]}>
+        <View style={styles.foamLayer}>
           {FOAM_GRID.map((f, i) => (
             <Animated.View
               key={f.id}
@@ -382,7 +397,7 @@ export default function SplashScreen({ onFinish }: Props) {
               />
             </Animated.View>
           ))}
-        </Animated.View>
+        </View>
 
         {/* ================================================
             LAYER 2: Water rinse curtain (水流)
