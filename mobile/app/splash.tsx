@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Animated,
+  Easing,
   Dimensions,
   Platform,
 } from 'react-native';
@@ -11,250 +12,560 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, FontSize } from '@/constants/colors';
 
-const { width, height } = Dimensions.get('window');
+const { width: SW, height: SH } = Dimensions.get('window');
 
-type SplashScreenProps = {
-  onFinish: () => void;
-};
+type Props = { onFinish: () => void };
 
-export default function SplashScreen({ onFinish }: SplashScreenProps) {
-  // Animation values
-  const logoScale = useRef(new Animated.Value(0.3)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const titleOpacity = useRef(new Animated.Value(0)).current;
-  const titleTranslateY = useRef(new Animated.Value(20)).current;
-  const taglineOpacity = useRef(new Animated.Value(0)).current;
-  const taglineTranslateY = useRef(new Animated.Value(15)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const shimmerOpacity = useRef(new Animated.Value(0.3)).current;
-  const droplet1Opacity = useRef(new Animated.Value(0)).current;
-  const droplet1TranslateY = useRef(new Animated.Value(0)).current;
-  const droplet2Opacity = useRef(new Animated.Value(0)).current;
-  const droplet2TranslateX = useRef(new Animated.Value(0)).current;
+// ─── Module-level guard: survives React Strict Mode remounts ───
+let _animationStarted = false;
+
+// ─── Foam bubbles (泡) — グリッド配置 + 左右交互噴射 + 自然なバラつき ───
+const GRID_COLS = 6;
+const GRID_ROWS = 10;
+const CELL_W = SW / GRID_COLS;
+const CELL_H = SH / GRID_ROWS;
+const FOAM_GRID = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => {
+  const col = i % GRID_COLS;
+  const row = Math.floor(i / GRID_COLS);
+  const fromRight = row % 2 === 0;
+  // サイズに大小のバラつき（小さい泡と大きい泡が混在）
+  const sizeBase = Math.max(CELL_W, CELL_H);
+  const isTiny = Math.random() < 0.2; // 20%は小さい泡
+  const size = isTiny
+    ? sizeBase * 0.6 + Math.random() * 20
+    : sizeBase * 1.3 + Math.random() * 40;
+  return {
+    id: i,
+    size,
+    fromRight,
+    startX: fromRight
+      ? SW + Math.random() * SW * 0.3
+      : -(size + Math.random() * SW * 0.3),
+    startY: row * CELL_H + CELL_H * 0.5 + (Math.random() - 0.5) * CELL_H * 0.4,
+    endX: col * CELL_W + CELL_W * 0.5 + (Math.random() - 0.5) * CELL_W * 0.4,
+    endY: row * CELL_H + CELL_H * 0.5 + (Math.random() - 0.5) * CELL_H * 0.4,
+    // 噴射タイミングのバラつき
+    delay: Math.random() * 550,
+    opacity: 0.9 + Math.random() * 0.1,
+    // 飛行速度のバラつき（400~700ms）
+    flyDuration: 400 + Math.random() * 300,
+    // 着地後の揺れ幅
+    wobble: 2 + Math.random() * 4,
+    // ポップ時のランダムディレイ
+    popDelay: Math.random() * 1000,
+    // ポップ時に少し浮くか沈むか
+    popDriftY: (Math.random() - 0.4) * 15, // 上方向バイアス
+  };
+});
+
+// ─── Water drip trails (水滴) — 多めでリアルに ───
+const DRIP_COUNT = 18;
+const DRIPS = Array.from({ length: DRIP_COUNT }, (_, i) => ({
+  id: i,
+  x: SW * 0.03 + Math.random() * SW * 0.94,
+  size: 2 + Math.random() * 5,
+  delay: 100 + Math.random() * 700,
+  speed: 800 + Math.random() * 1200,
+}));
+
+export default function SplashScreen({ onFinish }: Props) {
+  // ─── Overall ───
   const overallFade = useRef(new Animated.Value(1)).current;
 
+  // ─── Solid white overlay that fades in to guarantee full coverage ───
+  const foamOverlayOpacity = useRef(new Animated.Value(0)).current;
+
+  // ─── Phase 1: Foam spray ───
+  const foamAnims = useMemo(
+    () =>
+      FOAM_GRID.map(() => ({
+        translateX: new Animated.Value(0),
+        translateY: new Animated.Value(0),
+        scale: new Animated.Value(0),
+        opacity: new Animated.Value(0),
+        wobbleX: new Animated.Value(0),
+      })),
+    [],
+  );
+
+  // ─── Phase 2: Water rinse (top→bottom curtain) ───
+  const waterY = useRef(new Animated.Value(-SH)).current;
+  const waterOpacity = useRef(new Animated.Value(0)).current;
+
+  // ─── Phase 2b: Water drip trails ───
+  const dripAnims = useMemo(
+    () =>
+      DRIPS.map(() => ({
+        translateY: new Animated.Value(0),
+        opacity: new Animated.Value(0),
+      })),
+    [],
+  );
+
+  // ─── Phase 3: Logo reveal ───
+  const logoScale = useRef(new Animated.Value(0.5)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoRotate = useRef(new Animated.Value(0.1)).current;
+  const glowOpacity = useRef(new Animated.Value(0)).current;
+  const glowScale = useRef(new Animated.Value(0.8)).current;
+
+  // Shine sweep
+  const shineX = useRef(new Animated.Value(-100)).current;
+  const shineOpacity = useRef(new Animated.Value(0)).current;
+
+  // ─── Phase 4: Title & tagline ───
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const titleY = useRef(new Animated.Value(25)).current;
+  const taglineOpacity = useRef(new Animated.Value(0)).current;
+  const taglineY = useRef(new Animated.Value(15)).current;
+
+  // ─── Bottom dots ───
+  const dotsOpacity = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
-    // Phase 1: Logo appears with spring
-    Animated.parallel([
-      Animated.spring(logoScale, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Module-level guard: survives React Strict Mode full remounts
+    if (_animationStarted) return;
+    _animationStarted = true;
 
-    // Phase 2: Pulse/shimmer loop on the logo
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.08,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    pulseLoop.start();
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // Shimmer on the icon ring
-    const shimmerLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerOpacity, {
-          toValue: 0.8,
+    // =========================================
+    // PHASE 1: Foam spray (t=0 ~ 800ms)
+    // 泡が左右から交互にスプレーのように飛んでくる + 白オーバーレイ
+    // =========================================
+
+    // Solid white overlay fades in alongside bubbles for guaranteed coverage
+    Animated.timing(foamOverlayOpacity, {
+      toValue: 1,
+      duration: 700,
+      delay: 200,
+      useNativeDriver: true,
+    }).start();
+
+    FOAM_GRID.forEach((f, i) => {
+      const t = setTimeout(() => {
+        Animated.parallel([
+          // 減速カーブで着地（スッと止まる）
+          Animated.timing(foamAnims[i].translateX, {
+            toValue: f.endX - f.startX,
+            duration: f.flyDuration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(foamAnims[i].translateY, {
+            toValue: f.endY - f.startY,
+            duration: f.flyDuration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.spring(foamAnims[i].scale, {
+            toValue: 1,
+            tension: 35,
+            friction: 5,
+            useNativeDriver: true,
+          }),
+          Animated.timing(foamAnims[i].opacity, {
+            toValue: f.opacity,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          // 着地後にプルプル揺れる
+          Animated.sequence([
+            Animated.timing(foamAnims[i].wobbleX, {
+              toValue: f.wobble,
+              duration: 120,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+            Animated.timing(foamAnims[i].wobbleX, {
+              toValue: -f.wobble * 0.6,
+              duration: 100,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+            Animated.timing(foamAnims[i].wobbleX, {
+              toValue: 0,
+              duration: 80,
+              easing: Easing.out(Easing.sin),
+              useNativeDriver: true,
+            }),
+          ]).start();
+        });
+      }, f.delay);
+      timers.push(t);
+    });
+
+    // =========================================
+    // PHASE 2: Water rinse (t=1200ms)
+    // 泡で真っ白になった後、水が上から流れて洗い流す
+    // =========================================
+    const waterTimer = setTimeout(() => {
+      // Show water curtain
+      Animated.timing(waterOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+
+      // Water sweeps down — 重力で加速する自然な流れ
+      Animated.timing(waterY, {
+        toValue: SH,
+        duration: 1100,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+
+      // Foam dissolves gradually: each bubble fades based on row (top→bottom)
+      // as the water curtain passes over them
+      setTimeout(() => {
+        // Overlay fades out slowly behind the bubbles
+        Animated.timing(foamOverlayOpacity, {
+          toValue: 0,
           duration: 1000,
           useNativeDriver: true,
-        }),
-        Animated.timing(shimmerOpacity, {
-          toValue: 0.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    shimmerLoop.start();
+        }).start();
 
-    // Phase 2b: Decorative water droplets
-    setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(droplet1Opacity, {
-          toValue: 0.5,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(droplet1TranslateY, {
-          toValue: -20,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(droplet2Opacity, {
-          toValue: 0.4,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(droplet2TranslateX, {
-          toValue: 15,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, 400);
+        // Each bubble pops at a random time — バラバラに消える
+        FOAM_GRID.forEach((f, i) => {
+          const popTimer = setTimeout(() => {
+            Animated.parallel([
+              Animated.timing(foamAnims[i].opacity, {
+                toValue: 0,
+                duration: 250 + Math.random() * 300,
+                useNativeDriver: true,
+              }),
+              // 縮みながら消える
+              Animated.timing(foamAnims[i].scale, {
+                toValue: 0.15 + Math.random() * 0.25,
+                duration: 200 + Math.random() * 200,
+                easing: Easing.in(Easing.quad),
+                useNativeDriver: true,
+              }),
+              // 消える時に少し浮く/沈む（泡の軽さ表現）
+              Animated.timing(foamAnims[i].wobbleX, {
+                toValue: f.popDriftY,
+                duration: 350,
+                easing: Easing.out(Easing.quad),
+                useNativeDriver: true,
+              }),
+            ]).start();
+          }, f.popDelay);
+          timers.push(popTimer);
+        });
+      }, 200);
 
-    // Phase 3: Title fades in
-    setTimeout(() => {
+      // Water drip trails
+      DRIPS.forEach((d, i) => {
+        const dt = setTimeout(() => {
+          Animated.parallel([
+            Animated.timing(dripAnims[i].opacity, {
+              toValue: 0.6,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(dripAnims[i].translateY, {
+              toValue: SH * 0.3 + Math.random() * SH * 0.4,
+              duration: d.speed,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            // Drip fades
+            Animated.timing(dripAnims[i].opacity, {
+              toValue: 0,
+              duration: 400,
+              useNativeDriver: true,
+            }).start();
+          });
+        }, d.delay);
+        timers.push(dt);
+      });
+
+      // Water curtain fades out after passing
+      setTimeout(() => {
+        Animated.timing(waterOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }).start();
+      }, 1000);
+    }, 1200);
+    timers.push(waterTimer);
+
+    // =========================================
+    // PHASE 3: Logo reveal (t=2600ms)
+    // 泡が消えた後にピカピカのロゴが現れる
+    // =========================================
+    const logoTimer = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(titleOpacity, {
+        Animated.spring(logoScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 5,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoOpacity, {
           toValue: 1,
           duration: 500,
           useNativeDriver: true,
         }),
-        Animated.timing(titleTranslateY, {
+        Animated.spring(logoRotate, {
           toValue: 0,
-          duration: 500,
+          tension: 40,
+          friction: 5,
           useNativeDriver: true,
         }),
       ]).start();
-    }, 600);
 
-    // Phase 4: Tagline fades in
-    setTimeout(() => {
+      // Glow pulse
+      const glow = Animated.loop(
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(glowOpacity, { toValue: 0.5, duration: 1000, useNativeDriver: true }),
+            Animated.timing(glowOpacity, { toValue: 0.1, duration: 1000, useNativeDriver: true }),
+          ]),
+          Animated.sequence([
+            Animated.timing(glowScale, { toValue: 1.2, duration: 1000, useNativeDriver: true }),
+            Animated.timing(glowScale, { toValue: 0.9, duration: 1000, useNativeDriver: true }),
+          ]),
+        ]),
+      );
+      glow.start();
+
+      // Cleanup glow on exit
+      const stopGlow = setTimeout(() => glow.stop(), 2000);
+      timers.push(stopGlow);
+    }, 2600);
+    timers.push(logoTimer);
+
+    // ─── Shine sweep (t=3100ms) ───
+    const shineTimer = setTimeout(() => {
+      Animated.sequence([
+        Animated.timing(shineOpacity, { toValue: 0.8, duration: 80, useNativeDriver: true }),
+        Animated.timing(shineX, { toValue: 100, duration: 500, useNativeDriver: true }),
+        Animated.timing(shineOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
+      ]).start();
+    }, 3100);
+    timers.push(shineTimer);
+
+    // =========================================
+    // PHASE 4: Title + tagline (t=3200ms)
+    // =========================================
+    const titleTimer = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(taglineOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(taglineTranslateY, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
+        Animated.spring(titleOpacity, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }),
+        Animated.spring(titleY, { toValue: 0, tension: 50, friction: 8, useNativeDriver: true }),
       ]).start();
-    }, 1000);
+    }, 3200);
+    timers.push(titleTimer);
 
-    // Phase 5: Fade out and navigate
+    const tagTimer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(taglineOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(taglineY, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]).start();
+    }, 3500);
+    timers.push(tagTimer);
+
+    // ─── Bottom dots (t=3700ms) ───
+    const dotsTimer = setTimeout(() => {
+      Animated.timing(dotsOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    }, 3700);
+    timers.push(dotsTimer);
+
+    // =========================================
+    // PHASE 5: Exit (t=4500ms)
+    // =========================================
     const exitTimer = setTimeout(() => {
-      pulseLoop.stop();
-      shimmerLoop.stop();
       Animated.timing(overallFade, {
         toValue: 0,
-        duration: 400,
+        duration: 500,
         useNativeDriver: true,
-      }).start(() => {
-        onFinish();
-      });
-    }, 2500);
+      }).start(() => onFinish());
+    }, 4500);
+    timers.push(exitTimer);
 
-    return () => {
-      clearTimeout(exitTimer);
-      pulseLoop.stop();
-      shimmerLoop.stop();
-    };
+    return () => timers.forEach(clearTimeout);
   }, []);
+
+  const rotateStr = logoRotate.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-57.3deg', '57.3deg'],
+  });
 
   return (
     <Animated.View style={[styles.container, { opacity: overallFade }]}>
       <LinearGradient
-        colors={['#162D4A', Colors.primary, '#243F64', '#162D4A']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        colors={['#0D1B2A', '#162D4A', Colors.primary, '#162D4A', '#0D1B2A']}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
         style={styles.gradient}
       >
-        {/* Decorative background circles */}
+        {/* ── Background circles ── */}
         <View style={styles.bgCircle1} />
         <View style={styles.bgCircle2} />
 
-        <View style={styles.content}>
-          {/* Logo area */}
+        {/* ================================================
+            LAYER 1: Foam bubbles (泡スプレー) + white overlay
+            ================================================ */}
+        {/* Solid white overlay — guarantees full white coverage */}
+        <Animated.View
+          style={[styles.foamOverlay, { opacity: foamOverlayOpacity }]}
+        />
+
+        <View style={styles.foamLayer}>
+          {FOAM_GRID.map((f, i) => (
+            <Animated.View
+              key={f.id}
+              style={[
+                styles.foamBubble,
+                {
+                  width: f.size,
+                  height: f.size,
+                  borderRadius: f.size / 2,
+                  left: f.startX,
+                  top: f.startY,
+                  opacity: foamAnims[i].opacity,
+                  transform: [
+                    { translateX: Animated.add(foamAnims[i].translateX, foamAnims[i].wobbleX) },
+                    { translateY: foamAnims[i].translateY },
+                    { scale: foamAnims[i].scale },
+                  ],
+                },
+              ]}
+            >
+              {/* Inner highlight for 3D bubble look */}
+              <View
+                style={[
+                  styles.foamHighlight,
+                  {
+                    width: f.size * 0.35,
+                    height: f.size * 0.35,
+                    borderRadius: f.size * 0.175,
+                  },
+                ]}
+              />
+            </Animated.View>
+          ))}
+        </View>
+
+        {/* ================================================
+            LAYER 2: Water rinse curtain (水流)
+            ================================================ */}
+        <Animated.View
+          style={[
+            styles.waterCurtain,
+            {
+              opacity: waterOpacity,
+              transform: [{ translateY: waterY }],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[
+              'rgba(59,130,246,0.01)',
+              'rgba(59,130,246,0.12)',
+              'rgba(96,165,250,0.25)',
+              'rgba(147,197,253,0.18)',
+              'rgba(59,130,246,0.08)',
+              'rgba(59,130,246,0.01)',
+            ]}
+            style={styles.waterGradient}
+          />
+        </Animated.View>
+
+        {/* ── Water drip trails ── */}
+        {DRIPS.map((d, i) => (
+          <Animated.View
+            key={`drip-${d.id}`}
+            style={[
+              styles.drip,
+              {
+                left: d.x,
+                width: d.size,
+                height: d.size * 3,
+                borderRadius: d.size,
+                opacity: dripAnims[i].opacity,
+                transform: [{ translateY: dripAnims[i].translateY }],
+              },
+            ]}
+          />
+        ))}
+
+        {/* ================================================
+            LAYER 3: Logo + Text (ロゴ表示)
+            ================================================ */}
+        <View style={styles.centerContent}>
+          {/* Logo */}
           <Animated.View
             style={[
-              styles.logoContainer,
+              styles.logoWrap,
               {
                 opacity: logoOpacity,
-                transform: [{ scale: logoScale }, { scale: pulseAnim }],
+                transform: [
+                  { scale: logoScale },
+                  { rotate: rotateStr },
+                ],
               },
             ]}
           >
-            {/* Shimmer ring */}
+            {/* Glow */}
             <Animated.View
-              style={[styles.shimmerRing, { opacity: shimmerOpacity }]}
+              style={[
+                styles.glow,
+                { opacity: glowOpacity, transform: [{ scale: glowScale }] },
+              ]}
             />
 
-            {/* Icon background */}
-            <View style={styles.iconCircle}>
-              <MaterialCommunityIcons
-                name="car-wash"
-                size={52}
-                color={Colors.white}
-              />
+            {/* Ring */}
+            <View style={styles.logoRing}>
+              <View style={styles.logoInner}>
+                <MaterialCommunityIcons name="car-wash" size={56} color={Colors.white} />
+              </View>
             </View>
 
-            {/* Decorative water droplets */}
+            {/* Shine */}
             <Animated.View
               style={[
-                styles.droplet1,
-                {
-                  opacity: droplet1Opacity,
-                  transform: [{ translateY: droplet1TranslateY }],
-                },
+                styles.shine,
+                { opacity: shineOpacity, transform: [{ translateX: shineX }] },
               ]}
-            >
-              <Ionicons name="water" size={16} color={Colors.primarySoft} />
-            </Animated.View>
-            <Animated.View
-              style={[
-                styles.droplet2,
-                {
-                  opacity: droplet2Opacity,
-                  transform: [{ translateX: droplet2TranslateX }],
-                },
-              ]}
-            >
-              <Ionicons name="water" size={12} color={Colors.primaryPale} />
-            </Animated.View>
+            />
+
+            {/* Sparkle decorations */}
+            <Ionicons name="sparkles" size={14} color="rgba(96,165,250,0.7)" style={styles.sparkle1} />
+            <Ionicons name="sparkles" size={10} color="rgba(191,219,254,0.5)" style={styles.sparkle2} />
+            <Ionicons name="water" size={11} color="rgba(147,197,253,0.5)" style={styles.sparkle3} />
           </Animated.View>
 
-          {/* App name */}
+          {/* Title */}
           <Animated.View
-            style={{
-              opacity: titleOpacity,
-              transform: [{ translateY: titleTranslateY }],
-            }}
+            style={{ opacity: titleOpacity, transform: [{ translateY: titleY }] }}
           >
             <Text style={styles.title}>Mobile Wash</Text>
           </Animated.View>
 
           {/* Tagline */}
           <Animated.View
-            style={{
-              opacity: taglineOpacity,
-              transform: [{ translateY: taglineTranslateY }],
-            }}
+            style={{ opacity: taglineOpacity, transform: [{ translateY: taglineY }] }}
           >
             <Text style={styles.tagline}>出張カーディテイリング</Text>
+            <View style={styles.taglineLine} />
           </Animated.View>
         </View>
 
-        {/* Bottom decorative line */}
-        <View style={styles.bottomBar}>
-          <Animated.View
-            style={[styles.bottomLine, { opacity: taglineOpacity }]}
-          />
-        </View>
+        {/* ── Bottom dots ── */}
+        <Animated.View style={[styles.bottomDots, { opacity: dotsOpacity }]}>
+          <View style={[styles.dot, styles.dotActive]} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+        </Animated.View>
       </LinearGradient>
     </Animated.View>
   );
 }
 
+// ─────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
@@ -264,91 +575,175 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
+
+  // ── Background ──
   bgCircle1: {
     position: 'absolute',
-    top: -height * 0.15,
-    right: -width * 0.2,
-    width: width * 0.7,
-    height: width * 0.7,
-    borderRadius: width * 0.35,
-    backgroundColor: 'rgba(59, 130, 246, 0.06)',
+    top: -SH * 0.12,
+    right: -SW * 0.15,
+    width: SW * 0.6,
+    height: SW * 0.6,
+    borderRadius: SW * 0.3,
+    backgroundColor: 'rgba(59,130,246,0.04)',
   },
   bgCircle2: {
     position: 'absolute',
-    bottom: -height * 0.1,
-    left: -width * 0.25,
-    width: width * 0.6,
-    height: width * 0.6,
-    borderRadius: width * 0.3,
-    backgroundColor: 'rgba(59, 130, 246, 0.04)',
+    bottom: -SH * 0.08,
+    left: -SW * 0.2,
+    width: SW * 0.5,
+    height: SW * 0.5,
+    borderRadius: SW * 0.25,
+    backgroundColor: 'rgba(59,130,246,0.03)',
   },
-  content: {
+
+  // ── Foam solid overlay (guarantees full white) ──
+  foamOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
+    zIndex: 9,
+  },
+
+  // ── Foam layer ──
+  foamLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
+  },
+  foamBubble: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(230,240,255,0.6)',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  foamHighlight: {
+    position: 'absolute',
+    top: '12%' as any,
+    left: '15%' as any,
+    backgroundColor: 'rgba(255,255,255,1)',
+  },
+
+  // ── Water curtain ──
+  waterCurtain: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: SH * 0.6,
+    zIndex: 20,
+  },
+  waterGradient: {
+    flex: 1,
+  },
+
+  // ── Drip trails ──
+  drip: {
+    position: 'absolute',
+    top: SH * 0.1,
+    backgroundColor: 'rgba(147,197,253,0.35)',
+    zIndex: 15,
+  },
+
+  // ── Center content (logo + text) ──
+  centerContent: {
     alignItems: 'center',
+    zIndex: 5,
   },
-  logoContainer: {
-    marginBottom: 32,
+  logoWrap: {
+    marginBottom: 36,
+    width: 140,
+    height: 140,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  shimmerRing: {
+  glow: {
     position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: 'rgba(59,130,246,0.15)',
+  },
+  logoRing: {
     width: 130,
     height: 130,
     borderRadius: 65,
     borderWidth: 2,
-    borderColor: Colors.primaryMedium,
-  },
-  iconCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(96, 165, 250, 0.3)',
+    borderColor: 'rgba(96,165,250,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  droplet1: {
-    position: 'absolute',
-    top: -8,
-    right: 5,
+  logoInner: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(59,130,246,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(96,165,250,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  droplet2: {
+  shine: {
     position: 'absolute',
-    bottom: 5,
-    left: -5,
+    width: 35,
+    height: 140,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 17,
+    transform: [{ skewX: '-15deg' }],
   },
+  sparkle1: { position: 'absolute', top: 0, right: 0 },
+  sparkle2: { position: 'absolute', bottom: 6, left: -2 },
+  sparkle3: { position: 'absolute', top: 20, left: -6 },
+
+  // ── Title ──
   title: {
-    fontSize: 36,
-    fontWeight: '700',
+    fontSize: 38,
+    fontWeight: '800',
     color: Colors.white,
-    letterSpacing: 1.5,
+    letterSpacing: 2,
     textAlign: 'center',
-    marginBottom: 10,
-    ...Platform.select({
-      ios: {
-        fontFamily: 'System',
-      },
-    }),
+    marginBottom: 12,
+    textShadowColor: 'rgba(59,130,246,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
+    ...Platform.select({ ios: { fontFamily: 'System' } }),
   },
   tagline: {
     fontSize: FontSize.md,
-    color: 'rgba(191, 219, 254, 0.85)',
-    letterSpacing: 2,
+    color: 'rgba(191,219,254,0.9)',
+    letterSpacing: 4,
     textAlign: 'center',
     fontWeight: '300',
   },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 60,
-    alignItems: 'center',
-    width: '100%',
+  taglineLine: {
+    marginTop: 12,
+    width: 50,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(96,165,250,0.35)',
+    alignSelf: 'center',
   },
-  bottomLine: {
-    width: 40,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: 'rgba(96, 165, 250, 0.3)',
+
+  // ── Bottom dots ──
+  bottomDots: {
+    position: 'absolute',
+    bottom: 70,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(96,165,250,0.2)',
+  },
+  dotActive: {
+    backgroundColor: 'rgba(96,165,250,0.7)',
+    width: 18,
+    borderRadius: 3,
   },
 });

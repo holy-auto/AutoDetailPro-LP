@@ -27,16 +27,25 @@ export default function AdminLayout() {
         options={{
           title: 'ダッシュボード',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart" size={size} color={color} />
+            <Ionicons name="home" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="orders"
+        name="chats"
         options={{
-          title: '注文',
+          title: 'チャット監視',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="receipt" size={size} color={color} />
+            <Ionicons name="chatbubbles" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="kyc"
+        options={{
+          title: 'KYC審査',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="shield-checkmark" size={size} color={color} />
           ),
         }}
       />
@@ -50,23 +59,18 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
-        name="payments"
+        name="ads"
         options={{
-          title: '決済',
+          title: '広告管理',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="wallet" size={size} color={color} />
+            <Ionicons name="megaphone" size={size} color={color} />
           ),
         }}
       />
-      <Tabs.Screen
-        name="categories"
-        options={{
-          title: 'カテゴリ',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="pricetag" size={size} color={color} />
-          ),
-        }}
-      />
+      {/* Hidden screens (accessible via router.push, not shown in tab bar) */}
+      <Tabs.Screen name="orders" options={{ href: null }} />
+      <Tabs.Screen name="payments" options={{ href: null }} />
+      <Tabs.Screen name="categories" options={{ href: null }} />
     </Tabs>
   );
 }

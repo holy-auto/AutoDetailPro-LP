@@ -17,6 +17,32 @@ const ExpoSecureStoreAdapter = {
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
+/**
+ * Get the currently authenticated user's ID.
+ * Returns null if not authenticated.
+ */
+export async function getAuthUserId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+/**
+ * Verify the current user has admin role.
+ * Returns the admin's user ID if verified, null otherwise.
+ */
+export async function verifyAdmin(): Promise<string | null> {
+  const userId = await getAuthUserId();
+  if (!userId) return null;
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
+
+  return data?.role === 'admin' ? userId : null;
+}
+
 /** Supabase が未設定（デモモード）かどうか */
 export const isSupabaseConfigured =
   supabaseUrl.length > 0 && supabaseAnonKey.length > 0;

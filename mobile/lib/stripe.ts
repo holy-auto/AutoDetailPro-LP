@@ -2,7 +2,10 @@ import { supabase } from './supabase';
 import {
   CANCELLATION,
   PAYMENT_METHOD,
+  PLATFORM_FEE,
+  PAYOUT_SCHEDULES,
   type PaymentMethod,
+  type PayoutSchedule,
 } from '@/constants/business-rules';
 
 // =============================================
@@ -11,6 +14,42 @@ import {
 // All Stripe API calls happen server-side (Edge Functions).
 // The client calls supabase.functions.invoke() to trigger them.
 
+// --- Fee Calculation Helpers ---
+
+/** お客様が支払う合計金額（基本料金 + 5%手数料） */
+export function calculateCustomerTotal(baseAmount: number): number {
+  return baseAmount + Math.round(baseAmount * PLATFORM_FEE.CUSTOMER_PERCENT / 100);
+}
+
+/** プロへの支払い金額（基本料金 - 5%手数料 - 振込手数料） */
+export function calculateProPayout(baseAmount: number, payoutSchedule: PayoutSchedule = 'weekly'): number {
+  const afterPlatformFee = baseAmount - Math.round(baseAmount * PLATFORM_FEE.PRO_PERCENT / 100);
+  const schedule = PAYOUT_SCHEDULES.find(s => s.id === payoutSchedule);
+  const payoutFeePercent = schedule?.fee_percent ?? 0;
+  if (payoutFeePercent === 0) return afterPlatformFee;
+  return afterPlatformFee - Math.round(afterPlatformFee * payoutFeePercent / 100);
+}
+
+/** 手数料の内訳を計算 */
+export function calculateFeeBreakdown(baseAmount: number, payoutSchedule: PayoutSchedule = 'weekly') {
+  const customerFee = Math.round(baseAmount * PLATFORM_FEE.CUSTOMER_PERCENT / 100);
+  const proFee = Math.round(baseAmount * PLATFORM_FEE.PRO_PERCENT / 100);
+  const proBaseAfterFee = baseAmount - proFee;
+  const schedule = PAYOUT_SCHEDULES.find(s => s.id === payoutSchedule);
+  const payoutFeePercent = schedule?.fee_percent ?? 0;
+  const payoutFee = Math.round(proBaseAfterFee * payoutFeePercent / 100);
+
+  return {
+    baseAmount,
+    customerFee,                              // お客様手数料 (5%)
+    customerTotal: baseAmount + customerFee,   // お客様支払い総額
+    proFee,                                    // プロ手数料 (5%)
+    payoutFee,                                 // 振込手数料 (即時: 3%, その他: 0%)
+    proPayout: proBaseAfterFee - payoutFee,    // プロ受取額
+    platformRevenue: customerFee + proFee + payoutFee, // プラットフォーム収益
+  };
+}
+
 /**
  * Create a Payment Intent (pre-authorization) when customer places an order.
  * - Online: Stripe Payment Intent with capture_method: 'manual'
@@ -18,7 +57,7 @@ import {
  */
 export async function createPaymentIntent(params: {
   orderId: string;
-  amount: number;
+  amount: number; // 基本料金（メニュー合計）
   paymentMethod: PaymentMethod;
   customerEmail: string;
 }) {
@@ -27,13 +66,19 @@ export async function createPaymentIntent(params: {
     return { paymentIntentId: null, clientSecret: null, method: 'cash' as const };
   }
 
-  const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+  const customerFee = Math.round(params.amount * PLATFORM_FEE.CUSTOMER_PERCENT / 100);
+  const customerTotal = params.amount + customerFee;
+
+  const { data, error } = await supabase.functions.invoke('stripe-connect', {
     body: {
+      action: 'create_payment_intent',
       order_id: params.orderId,
-      amount: params.amount,
+      amount: customerTotal,          // お客様支払い総額（基本料金 + 5%）
+      base_amount: params.amount,     // 基本料金
+      customer_fee: customerFee,      // お客様手数料
       currency: 'jpy',
       customer_email: params.customerEmail,
-      capture_method: 'manual', // 事前決済（手動キャプチャ）
+      capture_method: 'manual',
     },
   });
 
@@ -55,8 +100,9 @@ export async function capturePayment(params: {
   paymentIntentId: string;
   amount?: number; // Optional: partial capture for cancellation fees
 }) {
-  const { data, error } = await supabase.functions.invoke('capture-payment', {
+  const { data, error } = await supabase.functions.invoke('stripe-connect', {
     body: {
+      action: 'capture',
       order_id: params.orderId,
       payment_intent_id: params.paymentIntentId,
       amount: params.amount, // undefined = full capture
@@ -75,8 +121,9 @@ export async function cancelPaymentAuthorization(params: {
   orderId: string;
   paymentIntentId: string;
 }) {
-  const { data, error } = await supabase.functions.invoke('cancel-payment', {
+  const { data, error } = await supabase.functions.invoke('stripe-connect', {
     body: {
+      action: 'cancel_intent',
       order_id: params.orderId,
       payment_intent_id: params.paymentIntentId,
     },
@@ -160,8 +207,9 @@ export async function processRefund(params: {
 }) {
   const refundAmount = Math.round(params.totalAmount * (params.refundPercent / 100));
 
-  const { data, error } = await supabase.functions.invoke('refund-payment', {
+  const { data, error } = await supabase.functions.invoke('stripe-connect', {
     body: {
+      action: 'refund',
       order_id: params.orderId,
       payment_intent_id: params.paymentIntentId,
       amount: refundAmount,
@@ -192,8 +240,9 @@ export async function processCashSettlement(params: {
   orderId: string;
   amount: number;
 }) {
-  const { data, error } = await supabase.functions.invoke('process-cash-settlement', {
+  const { data, error } = await supabase.functions.invoke('stripe-connect', {
     body: {
+      action: 'cash_settlement',
       pro_id: params.proId,
       order_id: params.orderId,
       amount: params.amount,

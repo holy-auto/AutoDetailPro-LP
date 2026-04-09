@@ -1,10 +1,13 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, useCallback, createContext, useContext } from 'react';
+import { useEffect, useState, useCallback, useMemo, createContext, useContext } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { useRouter, useSegments } from 'expo-router';
 import SplashScreen from './splash';
+
+// Module-level guard: survives React Strict Mode full remounts
+let _splashFinished = false;
 
 type UserRole = 'customer' | 'pro' | 'admin' | null;
 
@@ -34,11 +37,13 @@ export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(!_splashFinished);
   const segments = useSegments();
   const router = useRouter();
 
   const handleSplashFinish = useCallback(() => {
+    if (_splashFinished) return;
+    _splashFinished = true;
     setShowSplash(false);
   }, []);
 
@@ -127,11 +132,25 @@ export default function RootLayout() {
   };
 
   // Returns true if user IS authenticated, false if redirected to login
-  const requireAuth = (): boolean => {
+  const requireAuth = useCallback((): boolean => {
     if (session) return true;
     router.push('/_auth/login');
     return false;
-  };
+  }, [session, router]);
+
+  // Memoize auth context value to prevent unnecessary consumer re-renders
+  const authValue = useMemo(
+    () => ({
+      session,
+      user: session?.user ?? null,
+      role,
+      isGuest: !session,
+      setRole: handleSetRole,
+      loading,
+      requireAuth,
+    }),
+    [session, role, loading, requireAuth],
+  );
 
   if (showSplash) {
     return (
@@ -143,17 +162,7 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user: session?.user ?? null,
-        role,
-        isGuest: !session,
-        setRole: handleSetRole,
-        loading,
-        requireAuth,
-      }}
-    >
+    <AuthContext.Provider value={authValue}>
       <StatusBar style="dark" />
       <Stack
         screenOptions={{

@@ -8,6 +8,7 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  InteractionManager,
   Platform,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Circle } from 'react-native-maps';
@@ -115,6 +116,7 @@ export default function CustomerHome() {
   const [userLocation, setUserLocation] = useState<Coords>(DEFAULT_LOCATION);
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [selectedProId, setSelectedProId] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -122,6 +124,14 @@ export default function CustomerHome() {
       setUserLocation(coords);
       setLoadingLocation(false);
     })();
+  }, []);
+
+  // Defer map rendering until navigation transition completes for smoother UX
+  useEffect(() => {
+    const handle = InteractionManager.runAfterInteractions(() => {
+      setMapReady(true);
+    });
+    return () => handle.cancel();
   }, []);
 
   const handleCallPro = () => {
@@ -139,6 +149,11 @@ export default function CustomerHome() {
   const handleScheduleBooking = () => {
     if (!requireAuth()) return;
     router.push('/customer/booking/schedule' as any);
+  };
+
+  const handleSubscription = () => {
+    if (!requireAuth()) return;
+    router.push('/customer/subscription' as any);
   };
 
   const handleRecenter = () => {
@@ -180,10 +195,12 @@ export default function CustomerHome() {
 
         {/* Map */}
         <View style={styles.mapContainer}>
-          {loadingLocation ? (
+          {loadingLocation || !mapReady ? (
             <View style={styles.mapLoading}>
               <ActivityIndicator size="large" color={Colors.primary} />
-              <Text style={styles.mapLoadingText}>位置情報を取得中...</Text>
+              <Text style={styles.mapLoadingText}>
+                {loadingLocation ? '位置情報を取得中...' : '地図を読み込み中...'}
+              </Text>
             </View>
           ) : (
             <MapView
@@ -392,25 +409,35 @@ export default function CustomerHome() {
         </View>
       </ScrollView>
 
-      {/* Schedule button */}
-      <TouchableOpacity
-        style={styles.scheduleButton}
-        activeOpacity={0.85}
-        onPress={handleScheduleBooking}
-      >
-        <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
-        <Text style={styles.scheduleButtonText}>日時予約</Text>
-      </TouchableOpacity>
+      {/* Bottom action bar — 3 buttons horizontal */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          style={styles.sideButton}
+          activeOpacity={0.85}
+          onPress={handleScheduleBooking}
+        >
+          <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
+          <Text style={styles.sideButtonText}>日時予約</Text>
+        </TouchableOpacity>
 
-      {/* FAB - Call Pro Button (Go style) */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.85}
-        onPress={handleCallPro}
-      >
-        <Ionicons name="car-sport" size={24} color={Colors.white} />
-        <Text style={styles.fabText}>プロを呼ぶ</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.mainButton}
+          activeOpacity={0.85}
+          onPress={handleCallPro}
+        >
+          <Ionicons name="car-sport" size={24} color={Colors.white} />
+          <Text style={styles.mainButtonText}>プロを呼ぶ</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.sideButton}
+          activeOpacity={0.85}
+          onPress={handleSubscription}
+        >
+          <Ionicons name="repeat-outline" size={18} color={Colors.success} />
+          <Text style={[styles.sideButtonText, { color: Colors.success }]}>定期コース</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -702,42 +729,47 @@ const styles = StyleSheet.create({
     color: Colors.primaryMedium,
   },
 
-  // Schedule button
-  scheduleButton: {
+  // Bottom action bar
+  bottomBar: {
     position: 'absolute',
-    bottom: 40,
-    left: Spacing.lg,
+    bottom: 30,
+    left: Spacing.md,
+    right: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  sideButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.white,
     paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: BorderRadius.full,
-    gap: 6,
+    paddingHorizontal: 14,
+    borderRadius: BorderRadius.lg,
+    gap: 4,
     shadowColor: Colors.shadowDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
     borderWidth: 1,
     borderColor: Colors.borderLight,
+    minWidth: 72,
   },
-  scheduleButtonText: {
-    fontSize: FontSize.sm,
+  sideButtonText: {
+    fontSize: FontSize.xs,
     fontWeight: '700',
     color: Colors.primary,
   },
-
-  // FAB
-  fab: {
-    position: 'absolute',
-    bottom: 40,
-    alignSelf: 'center',
+  mainButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.primary,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     borderRadius: BorderRadius.full,
     gap: Spacing.sm,
     shadowColor: Colors.primary,
@@ -746,7 +778,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  fabText: {
+  mainButtonText: {
     fontSize: FontSize.lg,
     fontWeight: '800',
     color: Colors.white,
