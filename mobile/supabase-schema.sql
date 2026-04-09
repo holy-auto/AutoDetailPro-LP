@@ -831,12 +831,252 @@ CREATE POLICY "Users can manage own tokens" ON push_tokens FOR ALL USING (auth.u
 CREATE INDEX idx_push_tokens_user ON push_tokens (user_id) WHERE active = TRUE;
 
 -- ============================================
--- 25. Realtime subscriptions
+-- 26. Vehicles (車両管理)
+-- ============================================
+CREATE TABLE vehicles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,                    -- ニックネーム（例: "マイカー"）
+  make TEXT,                             -- メーカー（例: "トヨタ"）
+  model TEXT,                            -- 車種（例: "プリウス"）
+  year INT,
+  color TEXT,
+  license_plate TEXT,
+  size TEXT NOT NULL CHECK (size IN ('kei', 'compact', 'sedan', 'suv', 'minivan', 'wagon', 'truck', 'luxury')),
+  photo_url TEXT,
+  is_default BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own vehicles" ON vehicles FOR ALL USING (auth.uid() = owner_id);
+
+CREATE INDEX idx_vehicles_owner ON vehicles (owner_id);
+
+-- ============================================
+-- 27. Estimates (見積もり)
+-- ============================================
+CREATE TABLE estimates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES profiles(id),
+  vehicle_id UUID REFERENCES vehicles(id),
+  menu_ids UUID[],
+  vehicle_size TEXT NOT NULL,
+  dirt_level TEXT NOT NULL CHECK (dirt_level IN ('light', 'moderate', 'heavy', 'extreme')),
+  base_price INT NOT NULL,
+  size_multiplier DOUBLE PRECISION DEFAULT 1.0,
+  dirt_multiplier DOUBLE PRECISION DEFAULT 1.0,
+  final_price INT NOT NULL,
+  -- 指名料
+  nominated_pro_id UUID REFERENCES profiles(id),
+  nomination_fee INT DEFAULT 0,
+  -- ステータス
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'confirmed', 'expired', 'ordered')),
+  order_id UUID REFERENCES orders(id),
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE estimates ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Customers can manage own estimates" ON estimates FOR ALL USING (auth.uid() = customer_id);
+
+-- ============================================
+-- 28. GPS Tracking (リアルタイム位置追跡)
+-- ============================================
+CREATE TABLE gps_tracks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  pro_id UUID NOT NULL REFERENCES profiles(id),
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  heading DOUBLE PRECISION,
+  speed DOUBLE PRECISION,
+  eta_minutes INT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE gps_tracks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Pros can insert own GPS" ON gps_tracks FOR INSERT WITH CHECK (auth.uid() = pro_id);
+CREATE POLICY "Order participants can view GPS" ON gps_tracks FOR SELECT USING (
+  EXISTS (SELECT 1 FROM orders WHERE id = order_id AND (customer_id = auth.uid() OR pro_id = auth.uid()))
+);
+
+CREATE INDEX idx_gps_tracks_order ON gps_tracks (order_id, created_at DESC);
+
+-- ============================================
+-- 29. Referrals (紹介プログラム)
+-- ============================================
+CREATE TABLE referral_codes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  code TEXT NOT NULL UNIQUE,
+  uses INT DEFAULT 0,
+  max_uses INT DEFAULT 50,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+CREATE TABLE referral_uses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  referral_code_id UUID NOT NULL REFERENCES referral_codes(id),
+  referrer_id UUID NOT NULL REFERENCES profiles(id),
+  referee_id UUID NOT NULL REFERENCES profiles(id),
+  referrer_reward_points INT NOT NULL,
+  referee_reward_points INT NOT NULL,
+  referee_coupon_id UUID REFERENCES coupons(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(referee_id)  -- 1人1回のみ利用可
+);
+
+ALTER TABLE referral_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referral_uses ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own referral code" ON referral_codes FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own referral uses" ON referral_uses FOR SELECT USING (auth.uid() = referrer_id OR auth.uid() = referee_id);
+
+-- ============================================
+-- 30. Favorite Pros (お気に入りプロ + 指名)
+-- ============================================
+CREATE TABLE favorite_pros (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  pro_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(customer_id, pro_id)
+);
+
+ALTER TABLE favorite_pros ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Customers can manage own favorites" ON favorite_pros FOR ALL USING (auth.uid() = customer_id);
+
+CREATE INDEX idx_favorite_pros_customer ON favorite_pros (customer_id);
+
+-- ============================================
+-- 31. Corporate Accounts (法人アカウント)
+-- ============================================
+CREATE TABLE corporate_accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_user_id UUID NOT NULL REFERENCES profiles(id),
+  company_name TEXT NOT NULL,
+  company_address TEXT,
+  contact_name TEXT NOT NULL,
+  contact_email TEXT NOT NULL,
+  contact_phone TEXT,
+  tax_id TEXT,                          -- 法人番号
+  billing_cycle TEXT DEFAULT 'monthly' CHECK (billing_cycle IN ('monthly', 'quarterly')),
+  discount_percent INT DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'suspended')),
+  stripe_customer_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE corporate_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  corporate_id UUID NOT NULL REFERENCES corporate_accounts(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id),
+  role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'manager', 'member')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(corporate_id, user_id)
+);
+
+CREATE TABLE corporate_vehicles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  corporate_id UUID NOT NULL REFERENCES corporate_accounts(id) ON DELETE CASCADE,
+  vehicle_id UUID NOT NULL REFERENCES vehicles(id),
+  department TEXT,
+  assigned_to UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE corporate_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE corporate_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE corporate_vehicles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Corporate admins can manage" ON corporate_accounts FOR ALL USING (auth.uid() = admin_user_id);
+CREATE POLICY "Members can view own corporate" ON corporate_members FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Admins can manage all corporate" ON corporate_accounts FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- ============================================
+-- 32. Group Bookings (グループ予約)
+-- ============================================
+CREATE TABLE group_bookings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organizer_id UUID NOT NULL REFERENCES profiles(id),
+  name TEXT,                            -- 例: "マンション駐車場 一括洗車"
+  location_latitude DOUBLE PRECISION,
+  location_longitude DOUBLE PRECISION,
+  location_address TEXT,
+  scheduled_date DATE,
+  scheduled_time TEXT,
+  discount_percent INT DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'collecting' CHECK (status IN ('collecting', 'confirmed', 'in_progress', 'completed', 'cancelled')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE group_booking_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id UUID NOT NULL REFERENCES group_bookings(id) ON DELETE CASCADE,
+  customer_id UUID NOT NULL REFERENCES profiles(id),
+  vehicle_id UUID REFERENCES vehicles(id),
+  menu_id UUID REFERENCES menus(id),
+  amount INT NOT NULL,
+  order_id UUID REFERENCES orders(id),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE group_bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE group_booking_entries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Organizers can manage groups" ON group_bookings FOR ALL USING (auth.uid() = organizer_id);
+CREATE POLICY "Participants can view own entries" ON group_booking_entries FOR SELECT USING (auth.uid() = customer_id);
+CREATE POLICY "Participants can manage own entries" ON group_booking_entries FOR ALL USING (auth.uid() = customer_id);
+
+-- ============================================
+-- 33. Pro Skill Badges (スキルバッジ)
+-- ============================================
+CREATE TABLE pro_badges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pro_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  badge_id TEXT NOT NULL,
+  earned_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(pro_id, badge_id)
+);
+
+ALTER TABLE pro_badges ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view badges" ON pro_badges FOR SELECT USING (TRUE);
+CREATE POLICY "Admins can manage badges" ON pro_badges FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- ============================================
+-- 34. Area Expansion Requests (エリア拡大リクエスト)
+-- ============================================
+CREATE TABLE area_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id),
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  address TEXT NOT NULL,
+  prefecture TEXT,
+  city TEXT,
+  votes INT DEFAULT 1,
+  status TEXT DEFAULT 'open' CHECK (status IN ('open', 'planned', 'launched', 'rejected')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE area_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view area requests" ON area_requests FOR SELECT USING (TRUE);
+CREATE POLICY "Users can create requests" ON area_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE INDEX idx_area_requests_location ON area_requests (prefecture, city);
+
+-- ============================================
+-- 35. Realtime subscriptions
 -- ============================================
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE pro_profiles;
 ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE gps_tracks;
 
 -- ============================================
 -- 11. Helper functions

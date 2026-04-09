@@ -523,3 +523,126 @@ export const SCHEDULED_BOOKING = {
     '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
   ],
 } as const;
+
+// --- Vehicle Management (車両管理) ---
+export const VEHICLE = {
+  SIZES: [
+    { id: 'kei', name: '軽自動車', priceMultiplier: 0.8, icon: 'car-sport' },
+    { id: 'compact', name: 'コンパクト', priceMultiplier: 1.0, icon: 'car' },
+    { id: 'sedan', name: 'セダン', priceMultiplier: 1.0, icon: 'car' },
+    { id: 'suv', name: 'SUV / クロスオーバー', priceMultiplier: 1.3, icon: 'car' },
+    { id: 'minivan', name: 'ミニバン', priceMultiplier: 1.4, icon: 'bus' },
+    { id: 'wagon', name: 'ワゴン', priceMultiplier: 1.2, icon: 'car' },
+    { id: 'truck', name: 'トラック / ピックアップ', priceMultiplier: 1.5, icon: 'car' },
+    { id: 'luxury', name: '高級車', priceMultiplier: 1.8, icon: 'car-sport' },
+  ],
+  COLORS: [
+    '白', '黒', 'シルバー', 'グレー', '赤', '青', '緑', '黄', 'ブラウン', 'その他',
+  ],
+  MAX_VEHICLES_PER_USER: 5,
+} as const;
+
+export type VehicleSize = (typeof VEHICLE.SIZES)[number]['id'];
+
+// --- Estimate / Quote (見積もり) ---
+export const ESTIMATE = {
+  DIRT_LEVELS: [
+    { id: 'light', name: '軽度（普段の汚れ）', priceMultiplier: 1.0 },
+    { id: 'moderate', name: '中度（1ヶ月放置）', priceMultiplier: 1.15 },
+    { id: 'heavy', name: '重度（泥・鳥糞・樹液）', priceMultiplier: 1.3 },
+    { id: 'extreme', name: '極度（長期放置・苔）', priceMultiplier: 1.5 },
+  ],
+  // 見積もりの有効期限
+  VALIDITY_HOURS: 24,
+} as const;
+
+export type DirtLevel = (typeof ESTIMATE.DIRT_LEVELS)[number]['id'];
+
+// --- GPS Tracking (リアルタイム追跡) ---
+export const GPS_TRACKING = {
+  UPDATE_INTERVAL_SEC: 10,       // 10秒ごとに位置更新
+  ARRIVAL_THRESHOLD_METERS: 100, // 100m以内で「到着」判定
+  SHOW_ETA: true,                // 到着予測時間を表示
+} as const;
+
+// --- Weather Integration (天気連携) ---
+export const WEATHER = {
+  // 雨天時の対応
+  RAIN_THRESHOLD_MM: 1,          // 1mm以上で雨判定
+  AUTO_SUGGEST_CANCEL: true,     // 雨予報時にキャンセル提案
+  ADVANCE_CHECK_HOURS: 3,        // 予約の3時間前に天気チェック
+  // 天気API
+  CHECK_INTERVAL_MIN: 30,        // 30分ごとに天気更新
+} as const;
+
+// --- Referral Program (紹介プログラム) ---
+export const REFERRAL = {
+  REFERRER_REWARD: 500,          // 紹介者: 500pt
+  REFEREE_REWARD: 500,           // 被紹介者: 500pt
+  REFEREE_COUPON: {
+    TYPE: 'fixed' as const,
+    VALUE: 1000,                  // ¥1,000OFF初回クーポン
+    VALID_DAYS: 30,
+  },
+  MAX_REFERRALS_PER_USER: 50,    // 1人最大50人まで
+  CODE_LENGTH: 8,                // 紹介コード8文字
+} as const;
+
+// --- Favorite Pro (お気に入りプロ + 指名料) ---
+export const FAVORITE_PRO = {
+  NOMINATION_FEE: 500,           // 指名料 ¥500
+  MAX_FAVORITES: 10,             // 最大10人まで
+} as const;
+
+// --- Corporate Account (法人アカウント) ---
+export const CORPORATE = {
+  MIN_VEHICLES: 3,               // 法人は最低3台から
+  DISCOUNT_TIERS: [
+    { minVehicles: 3, discount: 5, label: '5%OFF' },
+    { minVehicles: 10, discount: 10, label: '10%OFF' },
+    { minVehicles: 30, discount: 15, label: '15%OFF' },
+    { minVehicles: 50, discount: 20, label: '20%OFF' },
+  ],
+  BILLING_CYCLES: ['monthly', 'quarterly'] as const,
+  INVOICE_DUE_DAYS: 30,
+} as const;
+
+// --- Group Booking (グループ予約) ---
+export const GROUP_BOOKING = {
+  MIN_VEHICLES: 2,
+  MAX_VEHICLES: 20,
+  // グループ割引
+  DISCOUNTS: [
+    { minCount: 2, discount: 5, label: '2台以上 5%OFF' },
+    { minCount: 5, discount: 10, label: '5台以上 10%OFF' },
+    { minCount: 10, discount: 15, label: '10台以上 15%OFF' },
+  ],
+} as const;
+
+// --- Pro Skill Badges (スキルバッジ) ---
+export const SKILL_BADGES = {
+  BADGES: [
+    { id: 'coating_master', name: 'コーティングマスター', icon: 'shield-checkmark', color: '#F59E0B', requirement: 'コーティング50件以上' },
+    { id: 'speed_pro', name: 'スピードプロ', icon: 'flash', color: '#3B82F6', requirement: '平均作業時間が上位10%' },
+    { id: 'five_star', name: '★5常連', icon: 'star', color: '#FFD700', requirement: '直近50件の平均★4.8以上' },
+    { id: 'repeat_magnet', name: 'リピートマグネット', icon: 'heart', color: '#EC4899', requirement: 'リピート率60%以上' },
+    { id: 'early_bird', name: 'アーリーバード', icon: 'sunny', color: '#F97316', requirement: '早朝予約の完了100件以上' },
+    { id: 'veteran', name: 'ベテラン', icon: 'trophy', color: '#8B5CF6', requirement: '累計施工500件以上' },
+  ],
+} as const;
+
+export type SkillBadgeId = (typeof SKILL_BADGES.BADGES)[number]['id'];
+
+// --- Area Expansion Request (エリア拡大リクエスト) ---
+export const AREA_REQUEST = {
+  THRESHOLD_TO_NOTIFY_ADMIN: 10, // 同エリア10件以上で管理者通知
+  REQUEST_COOLDOWN_DAYS: 30,     // 同ユーザーから同エリアへの再リクエストは30日後
+} as const;
+
+// --- i18n (多言語) ---
+export const I18N = {
+  DEFAULT_LOCALE: 'ja',
+  SUPPORTED_LOCALES: ['ja', 'en'] as const,
+} as const;
+
+export type Locale = (typeof I18N.SUPPORTED_LOCALES)[number];
