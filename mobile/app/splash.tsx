@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   Animated,
+  Easing,
   Dimensions,
   Platform,
 } from 'react-native';
@@ -18,7 +19,7 @@ type Props = { onFinish: () => void };
 // ─── Module-level guard: survives React Strict Mode remounts ───
 let _animationStarted = false;
 
-// ─── Foam bubbles (泡) — グリッド配置で画面を完全に覆う、左右から噴射 ───
+// ─── Foam bubbles (泡) — グリッド配置 + 左右交互噴射 + 自然なバラつき ───
 const GRID_COLS = 6;
 const GRID_ROWS = 10;
 const CELL_W = SW / GRID_COLS;
@@ -26,33 +27,45 @@ const CELL_H = SH / GRID_ROWS;
 const FOAM_GRID = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => {
   const col = i % GRID_COLS;
   const row = Math.floor(i / GRID_COLS);
-  // 左右交互: 偶数行は右から、奇数行は左から
   const fromRight = row % 2 === 0;
+  // サイズに大小のバラつき（小さい泡と大きい泡が混在）
+  const sizeBase = Math.max(CELL_W, CELL_H);
+  const isTiny = Math.random() < 0.2; // 20%は小さい泡
+  const size = isTiny
+    ? sizeBase * 0.6 + Math.random() * 20
+    : sizeBase * 1.3 + Math.random() * 40;
   return {
     id: i,
-    size: Math.max(CELL_W, CELL_H) * 1.4 + Math.random() * 30,
-    // 左から来る泡は画面左外、右から来る泡は画面右外からスタート
+    size,
+    fromRight,
     startX: fromRight
       ? SW + Math.random() * SW * 0.3
-      : -(Math.random() * SW * 0.3),
-    startY: row * CELL_H + CELL_H * 0.5 + (Math.random() - 0.5) * CELL_H * 0.3,
-    endX: col * CELL_W + CELL_W * 0.5 + (Math.random() - 0.5) * CELL_W * 0.3,
-    endY: row * CELL_H + CELL_H * 0.5 + (Math.random() - 0.5) * CELL_H * 0.3,
-    delay: Math.random() * 500,
-    opacity: 0.93 + Math.random() * 0.07,
-    // ポップ時のランダムディレイ (バラバラに消える用)
-    popDelay: Math.random() * 900,
+      : -(size + Math.random() * SW * 0.3),
+    startY: row * CELL_H + CELL_H * 0.5 + (Math.random() - 0.5) * CELL_H * 0.4,
+    endX: col * CELL_W + CELL_W * 0.5 + (Math.random() - 0.5) * CELL_W * 0.4,
+    endY: row * CELL_H + CELL_H * 0.5 + (Math.random() - 0.5) * CELL_H * 0.4,
+    // 噴射タイミングのバラつき
+    delay: Math.random() * 550,
+    opacity: 0.9 + Math.random() * 0.1,
+    // 飛行速度のバラつき（400~700ms）
+    flyDuration: 400 + Math.random() * 300,
+    // 着地後の揺れ幅
+    wobble: 2 + Math.random() * 4,
+    // ポップ時のランダムディレイ
+    popDelay: Math.random() * 1000,
+    // ポップ時に少し浮くか沈むか
+    popDriftY: (Math.random() - 0.4) * 15, // 上方向バイアス
   };
 });
 
-// ─── Water drip trails (水滴) ───
-const DRIP_COUNT = 12;
+// ─── Water drip trails (水滴) — 多めでリアルに ───
+const DRIP_COUNT = 18;
 const DRIPS = Array.from({ length: DRIP_COUNT }, (_, i) => ({
   id: i,
-  x: SW * 0.05 + Math.random() * SW * 0.9,
-  size: 3 + Math.random() * 5,
-  delay: 200 + Math.random() * 600,
-  speed: 1200 + Math.random() * 800,
+  x: SW * 0.03 + Math.random() * SW * 0.94,
+  size: 2 + Math.random() * 5,
+  delay: 100 + Math.random() * 700,
+  speed: 800 + Math.random() * 1200,
 }));
 
 export default function SplashScreen({ onFinish }: Props) {
@@ -70,6 +83,7 @@ export default function SplashScreen({ onFinish }: Props) {
         translateY: new Animated.Value(0),
         scale: new Animated.Value(0),
         opacity: new Animated.Value(0),
+        wobbleX: new Animated.Value(0),
       })),
     [],
   );
@@ -131,28 +145,53 @@ export default function SplashScreen({ onFinish }: Props) {
     FOAM_GRID.forEach((f, i) => {
       const t = setTimeout(() => {
         Animated.parallel([
+          // 減速カーブで着地（スッと止まる）
           Animated.timing(foamAnims[i].translateX, {
             toValue: f.endX - f.startX,
-            duration: 600,
+            duration: f.flyDuration,
+            easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.timing(foamAnims[i].translateY, {
             toValue: f.endY - f.startY,
-            duration: 600,
+            duration: f.flyDuration,
+            easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.spring(foamAnims[i].scale, {
             toValue: 1,
-            tension: 40,
-            friction: 6,
+            tension: 35,
+            friction: 5,
             useNativeDriver: true,
           }),
           Animated.timing(foamAnims[i].opacity, {
             toValue: f.opacity,
-            duration: 300,
+            duration: 250,
             useNativeDriver: true,
           }),
-        ]).start();
+        ]).start(() => {
+          // 着地後にプルプル揺れる
+          Animated.sequence([
+            Animated.timing(foamAnims[i].wobbleX, {
+              toValue: f.wobble,
+              duration: 120,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+            Animated.timing(foamAnims[i].wobbleX, {
+              toValue: -f.wobble * 0.6,
+              duration: 100,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+            Animated.timing(foamAnims[i].wobbleX, {
+              toValue: 0,
+              duration: 80,
+              easing: Easing.out(Easing.sin),
+              useNativeDriver: true,
+            }),
+          ]).start();
+        });
       }, f.delay);
       timers.push(t);
     });
@@ -169,10 +208,11 @@ export default function SplashScreen({ onFinish }: Props) {
         useNativeDriver: true,
       }).start();
 
-      // Water sweeps down
+      // Water sweeps down — 重力で加速する自然な流れ
       Animated.timing(waterY, {
         toValue: SH,
-        duration: 1200,
+        duration: 1100,
+        easing: Easing.in(Easing.quad),
         useNativeDriver: true,
       }).start();
 
@@ -192,13 +232,21 @@ export default function SplashScreen({ onFinish }: Props) {
             Animated.parallel([
               Animated.timing(foamAnims[i].opacity, {
                 toValue: 0,
-                duration: 250 + Math.random() * 250,
+                duration: 250 + Math.random() * 300,
                 useNativeDriver: true,
               }),
-              // Bubble shrinks as it pops
+              // 縮みながら消える
               Animated.timing(foamAnims[i].scale, {
-                toValue: 0.2 + Math.random() * 0.2,
-                duration: 200 + Math.random() * 150,
+                toValue: 0.15 + Math.random() * 0.25,
+                duration: 200 + Math.random() * 200,
+                easing: Easing.in(Easing.quad),
+                useNativeDriver: true,
+              }),
+              // 消える時に少し浮く/沈む（泡の軽さ表現）
+              Animated.timing(foamAnims[i].wobbleX, {
+                toValue: f.popDriftY,
+                duration: 350,
+                easing: Easing.out(Easing.quad),
                 useNativeDriver: true,
               }),
             ]).start();
@@ -245,11 +293,10 @@ export default function SplashScreen({ onFinish }: Props) {
     timers.push(waterTimer);
 
     // =========================================
-    // PHASE 3: Logo reveal (t=2400ms)
-    // 洗い終わった後にピカピカのロゴが現れる
+    // PHASE 3: Logo reveal (t=2600ms)
+    // 泡が消えた後にピカピカのロゴが現れる
     // =========================================
     const logoTimer = setTimeout(() => {
-      // t=2400ms
       Animated.parallel([
         Animated.spring(logoScale, {
           toValue: 1,
@@ -288,28 +335,28 @@ export default function SplashScreen({ onFinish }: Props) {
       // Cleanup glow on exit
       const stopGlow = setTimeout(() => glow.stop(), 2000);
       timers.push(stopGlow);
-    }, 2400);
+    }, 2600);
     timers.push(logoTimer);
 
-    // ─── Shine sweep (t=2800ms) ───
+    // ─── Shine sweep (t=3100ms) ───
     const shineTimer = setTimeout(() => {
       Animated.sequence([
         Animated.timing(shineOpacity, { toValue: 0.8, duration: 80, useNativeDriver: true }),
         Animated.timing(shineX, { toValue: 100, duration: 500, useNativeDriver: true }),
         Animated.timing(shineOpacity, { toValue: 0, duration: 100, useNativeDriver: true }),
       ]).start();
-    }, 2800);
+    }, 3100);
     timers.push(shineTimer);
 
     // =========================================
-    // PHASE 4: Title + tagline (t=2900ms)
+    // PHASE 4: Title + tagline (t=3200ms)
     // =========================================
     const titleTimer = setTimeout(() => {
       Animated.parallel([
         Animated.spring(titleOpacity, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }),
         Animated.spring(titleY, { toValue: 0, tension: 50, friction: 8, useNativeDriver: true }),
       ]).start();
-    }, 2900);
+    }, 3200);
     timers.push(titleTimer);
 
     const tagTimer = setTimeout(() => {
@@ -317,17 +364,17 @@ export default function SplashScreen({ onFinish }: Props) {
         Animated.timing(taglineOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.timing(taglineY, { toValue: 0, duration: 400, useNativeDriver: true }),
       ]).start();
-    }, 3200);
+    }, 3500);
     timers.push(tagTimer);
 
-    // ─── Bottom dots (t=3400ms) ───
+    // ─── Bottom dots (t=3700ms) ───
     const dotsTimer = setTimeout(() => {
       Animated.timing(dotsOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
-    }, 3400);
+    }, 3700);
     timers.push(dotsTimer);
 
     // =========================================
-    // PHASE 5: Exit (t=4200ms)
+    // PHASE 5: Exit (t=4500ms)
     // =========================================
     const exitTimer = setTimeout(() => {
       Animated.timing(overallFade, {
@@ -335,7 +382,7 @@ export default function SplashScreen({ onFinish }: Props) {
         duration: 500,
         useNativeDriver: true,
       }).start(() => onFinish());
-    }, 4200);
+    }, 4500);
     timers.push(exitTimer);
 
     return () => timers.forEach(clearTimeout);
@@ -380,7 +427,7 @@ export default function SplashScreen({ onFinish }: Props) {
                   top: f.startY,
                   opacity: foamAnims[i].opacity,
                   transform: [
-                    { translateX: foamAnims[i].translateX },
+                    { translateX: Animated.add(foamAnims[i].translateX, foamAnims[i].wobbleX) },
                     { translateY: foamAnims[i].translateY },
                     { scale: foamAnims[i].scale },
                   ],
