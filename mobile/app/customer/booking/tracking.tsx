@@ -13,6 +13,8 @@ import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
+import AdBanner from '@/components/AdBanner';
+import AdMobBanner from '@/components/AdMobBanner';
 import {
   CUSTOMER_TRACKER_STEPS,
   CANCELLATION,
@@ -464,6 +466,14 @@ export default function TrackingScreen() {
             </Text>
           </View>
         </View>
+
+        {/* 待機中・作業中に広告表示 */}
+        {(currentStatus === 'on_the_way' || currentStatus === 'in_progress') && (
+          <>
+            <AdBanner placement="home_feed" style={{ marginTop: Spacing.md }} />
+            <AdMobBanner size="BANNER" style={{ marginTop: Spacing.sm }} />
+          </>
+        )}
 
         {/* Cancel Button */}
         {currentStatus !== 'pro_marked_done' && (

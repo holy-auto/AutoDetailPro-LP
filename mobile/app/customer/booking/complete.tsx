@@ -1,14 +1,19 @@
+import { useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
 import { COMPLETION } from '@/constants/business-rules';
+import { showInterstitial, preloadInterstitial } from '@/lib/admob';
+import AdBanner from '@/components/AdBanner';
+import RewardedAdButton from '@/components/RewardedAdButton';
 
 export default function CompleteScreen() {
   const router = useRouter();
@@ -21,6 +26,21 @@ export default function CompleteScreen() {
 
   const totalPrice = parseInt(params.totalPrice ?? '0', 10);
   const isAutoCompleted = params.autoCompleted === 'true';
+
+  // サービス完了後にインタースティシャル広告を表示
+  useEffect(() => {
+    preloadInterstitial();
+    // 少し間を置いてから表示（完了画面を見せてから）
+    const timer = setTimeout(() => {
+      showInterstitial();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleRewardEarned = (amount: number) => {
+    // TODO: Supabaseにクーポン保存
+    // saveCoupon({ userId, amount, source: 'rewarded_ad' });
+  };
 
   const handleReview = () => {
     router.replace({
@@ -81,6 +101,12 @@ export default function CompleteScreen() {
             <Ionicons name="star" size={20} color={Colors.white} />
             <Text style={styles.reviewBtnText}>レビューを書く</Text>
           </TouchableOpacity>
+
+          {/* リワード広告 — 動画視聴でクーポンGET */}
+          <RewardedAdButton onRewardEarned={handleRewardEarned} />
+
+          {/* パートナー広告 — 完了画面用 */}
+          <AdBanner placement="order_complete" />
 
           <TouchableOpacity style={styles.disputeBtn} onPress={handleDispute}>
             <Ionicons name="alert-circle-outline" size={18} color={Colors.error} />
