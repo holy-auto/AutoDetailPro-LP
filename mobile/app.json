@@ -8,11 +8,6 @@
     "scheme": "mobilewash",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash.png",
-      "backgroundColor": "#1E3A5F",
-      "resizeMode": "contain"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mobilewash.app",
@@ -45,12 +40,7 @@
       "expo-apple-authentication",
       "expo-location",
       "expo-secure-store",
-      "expo-notifications",
-      ["expo-splash-screen", {
-        "image": "./assets/splash.png",
-        "backgroundColor": "#1E3A5F",
-        "resizeMode": "contain"
-      }]
+      "expo-notifications"
     ]
   }
 }
