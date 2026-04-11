@@ -41,6 +41,15 @@
       "expo-location",
       "expo-secure-store",
       "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1E3A5F",
+          "imageWidth": 200
+        }
+      ],
       "./plugins/with-splashscreen-logo.js"
     ]
   }
