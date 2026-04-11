@@ -1,0 +1,75 @@
+# EAS Build ignore file
+# When .easignore exists, it is used instead of .gitignore for determining
+# which files to upload to EAS Build.
+
+# ===== Standard Expo / React Native ignores =====
+node_modules/
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+# Native build artifacts
+ios/Pods/
+ios/build/
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# Logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# Env (let EAS secrets handle them)
+.env
+.env.local
+.env.*.local
+
+# ===== Windows user profile dirs (in case EAS walks up to home) =====
+AppData/
+Desktop/
+Documents/
+Downloads/
+Favorites/
+Links/
+Music/
+OneDrive/
+Pictures/
+Saved Games/
+Searches/
+Videos/
+3D Objects/
+Contacts/
+Application Data/
+Cookies/
+Local Settings/
+My Documents/
+NetHood/
+PrintHood/
+Recent/
+SendTo/
+Templates/
+Start Menu/
+
+# Random user data leftovers
+ntuser.dat*
+NTUSER.DAT*
+NTUSER.*
+.lesshst
+.bash_history
+.zsh_history
+.viminfo

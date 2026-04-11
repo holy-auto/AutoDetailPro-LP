@@ -18,6 +18,9 @@ import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
 import { SERVICE_CATEGORIES } from '@/constants/categories';
 import { MATCHING } from '@/constants/business-rules';
 import { useAuth } from '../_layout';
+import { preloadInterstitial } from '@/lib/admob';
+import AdBanner from '@/components/AdBanner';
+import AdMobBanner from '@/components/AdMobBanner';
 import {
   getCurrentLocation,
   DEFAULT_LOCATION,
@@ -124,6 +127,8 @@ export default function CustomerHome() {
       setUserLocation(coords);
       setLoadingLocation(false);
     })();
+    // 完了画面用のインタースティシャルを事前ロード
+    preloadInterstitial();
   }, []);
 
   // Defer map rendering until navigation transition completes for smoother UX
@@ -316,6 +321,9 @@ export default function CustomerHome() {
           </ScrollView>
         </View>
 
+        {/* パートナー広告 — ホーム上部 */}
+        <AdBanner placement="home_top" />
+
         {/* Nearby Pros */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -408,6 +416,9 @@ export default function CustomerHome() {
           ))}
         </View>
       </ScrollView>
+
+      {/* AdMob バナー広告 */}
+      <AdMobBanner size="ANCHORED_ADAPTIVE_BANNER" />
 
       {/* Bottom action bar — 3 buttons horizontal */}
       <View style={styles.bottomBar}>

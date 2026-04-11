@@ -521,6 +521,40 @@ export type AdType = (typeof ADS.TYPES)[keyof typeof ADS.TYPES];
 export type AdPlacement = (typeof ADS.PLACEMENTS)[keyof typeof ADS.PLACEMENTS];
 export type ProAdPlanId = (typeof ADS.PRO_AD_PLANS)[number]['id'];
 
+// --- AdMob (Google Mobile Ads) ---
+// テスト用IDはGoogle公式のテストID。本番リリース前に実際のIDに差し替え。
+export const ADMOB = {
+  // バナー広告 (ホーム画面下部)
+  BANNER: {
+    ios: 'ca-app-pub-3940256099942544/2934735716',       // テスト
+    android: 'ca-app-pub-3940256099942544/6300978111',   // テスト
+  },
+  // インタースティシャル (サービス完了後)
+  INTERSTITIAL: {
+    ios: 'ca-app-pub-3940256099942544/4411468910',       // テスト
+    android: 'ca-app-pub-3940256099942544/1033173712',   // テスト
+  },
+  // リワード動画 (クーポン獲得)
+  REWARDED: {
+    ios: 'ca-app-pub-3940256099942544/1712485313',       // テスト
+    android: 'ca-app-pub-3940256099942544/5224354917',   // テスト
+  },
+  // ネイティブ広告 (フィード内)
+  NATIVE: {
+    ios: 'ca-app-pub-3940256099942544/3986624511',       // テスト
+    android: 'ca-app-pub-3940256099942544/2247696110',   // テスト
+  },
+  // 表示ルール
+  RULES: {
+    INTERSTITIAL_COOLDOWN_SEC: 120,     // インタースティシャルの最小表示間隔
+    MAX_INTERSTITIALS_PER_SESSION: 3,   // セッション中の最大インタースティシャル回数
+    REWARDED_COUPON_AMOUNT: 100,        // リワード動画視聴で得られる割引額（¥）
+    REWARDED_COUPON_EXPIRES_DAYS: 30,   // リワードクーポンの有効期限
+    SHOW_ADS_AFTER_ORDER_COUNT: 0,      // N回目の注文から広告表示（0=最初から）
+    HIDE_ADS_FOR_SUBSCRIPTION: true,    // サブスク会員は広告非表示
+  },
+} as const;
+
 // --- Scheduled Booking (先日程予約) ---
 export const SCHEDULED_BOOKING = {
   MIN_ADVANCE_HOURS: 2,          // 最低2時間先

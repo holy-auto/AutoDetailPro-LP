@@ -8,27 +8,31 @@
     "scheme": "mobilewash",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": {
-      "backgroundColor": "#1E3A5F",
-      "resizeMode": "contain"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mobilewash.app",
+      "buildNumber": "1",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "近くのプロを表示するために位置情報を使用します",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "出張中の位置情報共有に使用します"
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "出張中の位置情報共有に使用します",
+        "NSUserTrackingUsageDescription": "パーソナライズされた広告を表示するために使用します",
+        "SKAdNetworkItems": [
+          { "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork" }
+        ]
       }
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1E3A5F"
       },
       "package": "com.mobilewash.app",
+      "versionCode": 1,
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "com.google.android.gms.permission.AD_ID"
       ]
     },
     "plugins": [
@@ -36,7 +40,8 @@
       "expo-apple-authentication",
       "expo-location",
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      "./plugins/with-splashscreen-logo.js"
     ]
   }
 }
