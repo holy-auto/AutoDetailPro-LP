@@ -1,19 +1,12 @@
 module.exports = function (api) {
   api.cache(true);
 
-  const plugins = [];
-
-  // Only add reanimated plugin if worklets dependency is available
-  try {
-    require.resolve('react-native-worklets/plugin');
-    plugins.push('react-native-reanimated/plugin');
-  } catch {
-    // react-native-worklets not installed — skip reanimated babel plugin
-    // This is fine for web builds and Expo Go
-  }
-
   return {
     presets: ['babel-preset-expo'],
-    plugins,
+    // react-native-reanimated/plugin must be listed last.
+    // It is always required — reanimated 4.x depends on react-native-worklets
+    // (now a direct dependency in package.json) and needs the Babel transform
+    // to convert worklet functions on every platform including web.
+    plugins: ['react-native-reanimated/plugin'],
   };
 };
