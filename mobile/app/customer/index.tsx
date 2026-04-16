@@ -10,8 +10,9 @@ import {
   ActivityIndicator,
   InteractionManager,
   Platform,
+  Alert,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Circle } from 'react-native-maps';
+import MapView, { Marker, Circle } from 'react-native-maps';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
@@ -123,11 +124,19 @@ export default function CustomerHome() {
 
   useEffect(() => {
     (async () => {
-      const coords = await getCurrentLocation();
+      const coords = await getCurrentLocation(async () => {
+        // Android: show Japanese rationale before the system permission dialog
+        await new Promise<void>((resolve) => {
+          Alert.alert(
+            '位置情報の使用',
+            '近くのプロを表示するために現在地を使用します。',
+            [{ text: 'OK', onPress: resolve }],
+          );
+        });
+      });
       setUserLocation(coords);
       setLoadingLocation(false);
     })();
-    // 完了画面用のインタースティシャルを事前ロード
     preloadInterstitial();
   }, []);
 
@@ -211,7 +220,7 @@ export default function CustomerHome() {
             <MapView
               ref={mapRef}
               style={styles.map}
-              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+              provider={undefined}
               initialRegion={{
                 ...userLocation,
                 latitudeDelta: 0.025,
