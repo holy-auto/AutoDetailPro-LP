@@ -10,8 +10,9 @@ import {
   ActivityIndicator,
   InteractionManager,
   Platform,
+  Alert,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Circle } from 'react-native-maps';
+import MapView, { Marker, Circle } from 'react-native-maps';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
@@ -28,6 +29,10 @@ import {
 } from '@/lib/location';
 import { rankPros, type ProRankData } from '@/lib/ranking';
 import { PRO_BOOST, PRO_RANKING } from '@/constants/business-rules';
+
+// Google Maps API key required for MapView on Android.
+// When not set the map is replaced with a placeholder so the app doesn't crash.
+const MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MAP_HEIGHT = 280;
@@ -123,11 +128,19 @@ export default function CustomerHome() {
 
   useEffect(() => {
     (async () => {
-      const coords = await getCurrentLocation();
+      const coords = await getCurrentLocation(async () => {
+        // Android: show Japanese rationale before the system permission dialog
+        await new Promise<void>((resolve) => {
+          Alert.alert(
+            '位置情報の使用',
+            '近くのプロを表示するために現在地を使用します。',
+            [{ text: 'OK', onPress: resolve }],
+          );
+        });
+      });
       setUserLocation(coords);
       setLoadingLocation(false);
     })();
-    // 完了画面用のインタースティシャルを事前ロード
     preloadInterstitial();
   }, []);
 
@@ -207,11 +220,20 @@ export default function CustomerHome() {
                 {loadingLocation ? '位置情報を取得中...' : '地図を読み込み中...'}
               </Text>
             </View>
+          ) : !MAPS_API_KEY && Platform.OS === 'android' ? (
+            /* Placeholder when Google Maps API key is not configured */
+            <View style={styles.mapPlaceholder}>
+              <MaterialCommunityIcons name="map-outline" size={48} color={Colors.primarySoft} />
+              <Text style={styles.mapPlaceholderText}>地図を表示するには</Text>
+              <Text style={styles.mapPlaceholderSub}>
+                EXPO_PUBLIC_GOOGLE_MAPS_API_KEY を設定してください
+              </Text>
+            </View>
           ) : (
             <MapView
               ref={mapRef}
               style={styles.map}
-              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+              provider={undefined}
               initialRegion={{
                 ...userLocation,
                 latitudeDelta: 0.025,
@@ -517,6 +539,26 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.primaryMedium,
     marginTop: Spacing.sm,
+  },
+  mapPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.primaryFaint,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.xs,
+  },
+  mapPlaceholderText: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    color: Colors.primaryMedium,
+  },
+  mapPlaceholderSub: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.lg,
   },
   recenterButton: {
     position: 'absolute',

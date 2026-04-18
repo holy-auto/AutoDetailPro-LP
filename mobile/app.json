@@ -41,7 +41,8 @@
       "expo-location",
       "expo-secure-store",
       "expo-notifications",
-      "./plugins/with-splashscreen-logo.js"
+      "./plugins/with-splashscreen-logo.js",
+      "./plugins/with-android-emulator-support.js"
     ]
   }
 }

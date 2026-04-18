@@ -15,7 +15,15 @@ export const DEFAULT_LOCATION: Coords = {
 /**
  * Request location permissions and get current position
  */
-export async function getCurrentLocation(): Promise<Coords> {
+export async function getCurrentLocation(
+  showRationale?: () => Promise<void>,
+): Promise<Coords> {
+  if (showRationale) {
+    const { status: existing } = await Location.getForegroundPermissionsAsync();
+    if (existing !== 'granted') {
+      await showRationale();
+    }
+  }
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') {
     return DEFAULT_LOCATION;

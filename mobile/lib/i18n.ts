@@ -1,3 +1,4 @@
+import { NativeModules, Platform } from 'react-native';
 import { I18N, type Locale } from '@/constants/business-rules';
 
 // =============================================
@@ -6,9 +7,28 @@ import { I18N, type Locale } from '@/constants/business-rules';
 // No external library. Module-level locale variable,
 // translation lookup, and currency formatting.
 
+// --- Device locale auto-detection ---
+
+function detectLocale(): Locale {
+  try {
+    let raw: string | undefined;
+    if (Platform.OS === 'ios') {
+      const s = NativeModules.SettingsManager?.settings;
+      raw = s?.AppleLocale ?? s?.AppleLanguages?.[0];
+    } else {
+      raw = NativeModules.I18nManager?.localeIdentifier;
+    }
+    const lang = raw?.split(/[-_]/)[0]?.toLowerCase();
+    if ((I18N.SUPPORTED_LOCALES as readonly string[]).includes(lang ?? '')) {
+      return lang as Locale;
+    }
+  } catch {}
+  return I18N.DEFAULT_LOCALE;
+}
+
 // --- Current locale (module-level state) ---
 
-let currentLocale: Locale = I18N.DEFAULT_LOCALE;
+let currentLocale: Locale = detectLocale();
 
 // --- Translations ---
 
