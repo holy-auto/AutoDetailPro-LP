@@ -105,6 +105,7 @@ export async function toggleProOnline(
 export async function purchaseBoost(
   proId: string,
   planId: BoostPlanId,
+  stripePaymentIntentId?: string,
 ): Promise<MutationResult> {
   const plan = getBoostPlan(planId);
   if (!plan) {
@@ -141,6 +142,7 @@ export async function purchaseBoost(
       started_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
       status: 'active',
+      stripe_payment_intent_id: stripePaymentIntentId ?? null,
     })
     .select()
     .single();

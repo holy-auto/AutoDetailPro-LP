@@ -354,6 +354,77 @@ Deno.serve(async (req) => {
     }
 
     // -----------------------------------------------------------------------
+    // create_boost_payment_intent — PI for pro ranking boost purchase
+    // amount = plan price (confirmed by client via PaymentSheet)
+    // -----------------------------------------------------------------------
+    if (action === 'create_boost_payment_intent') {
+      const { pro_id, plan_id, amount, customer_email } = body;
+
+      if (!pro_id || !plan_id || !amount) {
+        return errorResponse('pro_id, plan_id and amount are required');
+      }
+
+      if (!Number.isInteger(amount) || amount <= 0 || amount > 1_000_000) {
+        return errorResponse('amount must be a positive integer (1–1,000,000)');
+      }
+
+      // Verify the pro does not already have an active boost
+      const { data: existing } = await supabase
+        .from('boost_purchases')
+        .select('id')
+        .eq('pro_id', pro_id)
+        .eq('status', 'active');
+
+      if (existing && existing.length > 0) {
+        return errorResponse('Pro already has an active boost', 409);
+      }
+
+      // Create or reuse a Stripe Customer for receipts
+      let stripeCustomerId: string | undefined;
+      if (customer_email) {
+        const { data: existingCustomers } = await stripe.customers.list({
+          email: customer_email,
+          limit: 1,
+        });
+        stripeCustomerId = existingCustomers[0]?.id;
+        if (!stripeCustomerId) {
+          const customer = await stripe.customers.create({
+            email: customer_email,
+            metadata: { pro_id, platform: 'mobile_wash' },
+          });
+          stripeCustomerId = customer.id;
+        }
+      }
+
+      const ephemeralKey = stripeCustomerId
+        ? await stripe.ephemeralKeys.create(
+            { customer: stripeCustomerId },
+            { apiVersion: '2024-04-10' },
+          )
+        : null;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: 'jpy',
+        capture_method: 'automatic',
+        customer: stripeCustomerId,
+        metadata: {
+          purpose: 'boost_purchase',
+          pro_id,
+          plan_id,
+          platform: 'mobile_wash',
+        },
+      });
+
+      return jsonResponse({
+        payment_intent_id: paymentIntent.id,
+        client_secret: paymentIntent.client_secret,
+        customer_id: stripeCustomerId ?? null,
+        ephemeral_key: ephemeralKey?.secret ?? null,
+      });
+    }
+
+    // -----------------------------------------------------------------------
     // cash_settlement — Process cash settlement for pro
     // -----------------------------------------------------------------------
     if (action === 'cash_settlement') {

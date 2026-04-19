@@ -27,8 +27,9 @@ import {
   DEFAULT_LOCATION,
   type Coords,
 } from '@/lib/location';
-import { rankPros, type ProRankData } from '@/lib/ranking';
+import { fetchRankedPros, rankPros, type ProRankData } from '@/lib/ranking';
 import { PRO_BOOST, PRO_RANKING } from '@/constants/business-rules';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 // Google Maps API key required for MapView on Android.
 // When not set the map is replaced with a placeholder so the app doesn't crash.
@@ -37,12 +38,8 @@ const MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MAP_HEIGHT = 280;
 
-// Mock nearby pros with ranking data
-const MOCK_PROS_RAW: (ProRankData & {
-  speciality: string;
-  latitude: number;
-  longitude: number;
-})[] = [
+// Fallback demo pros used only when Supabase is not configured.
+const DEMO_PROS_RAW: ProRankData[] = [
   {
     id: '1',
     name: '田中 太郎',
@@ -82,7 +79,7 @@ const MOCK_PROS_RAW: (ProRankData & {
     distance: 2.1,
     responseRate: 1.0,
     completionRate: 1.0,
-    createdAt: '2026-03-20', // newcomer!
+    createdAt: '2026-03-20',
     boostActive: false,
     improvementStatus: null,
     speciality: 'フルディテイル',
@@ -91,14 +88,14 @@ const MOCK_PROS_RAW: (ProRankData & {
   },
 ];
 
-// Apply ranking algorithm
-const MOCK_PROS = rankPros(MOCK_PROS_RAW).map((pro) => ({
-  ...pro,
-  speciality: (pro as any).speciality as string,
-  latitude: (pro as any).latitude as number,
-  longitude: (pro as any).longitude as number,
-  eta: `${Math.round(pro.distance * 4)}分`,
-}));
+type DisplayPro = ProRankData & { eta: string };
+
+function withEta(pros: ProRankData[]): DisplayPro[] {
+  return pros.map((pro) => ({
+    ...pro,
+    eta: `${Math.round(pro.distance * 4)}分`,
+  }));
+}
 
 const CATEGORY_ICONS: Record<string, string> = {
   exterior: 'car-wash',
@@ -125,6 +122,9 @@ export default function CustomerHome() {
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [selectedProId, setSelectedProId] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [pros, setPros] = useState<DisplayPro[]>(() =>
+    withEta(rankPros(DEMO_PROS_RAW)),
+  );
 
   useEffect(() => {
     (async () => {
@@ -140,6 +140,25 @@ export default function CustomerHome() {
       });
       setUserLocation(coords);
       setLoadingLocation(false);
+
+      // Fetch ranked pros from Supabase once we have the user's location
+      if (isSupabaseConfigured) {
+        try {
+          const ranked = await fetchRankedPros(
+            coords.latitude,
+            coords.longitude,
+            MATCHING.BASE_RADIUS_KM,
+          );
+          const withCoords = ranked.filter(
+            (p) => typeof p.latitude === 'number' && typeof p.longitude === 'number',
+          );
+          if (withCoords.length > 0) {
+            setPros(withEta(withCoords));
+          }
+        } catch {
+          // Keep demo pros on failure
+        }
+      }
     })();
     preloadInterstitial();
   }, []);
@@ -253,7 +272,7 @@ export default function CustomerHome() {
               />
 
               {/* Pro markers */}
-              {MOCK_PROS.map((pro) => (
+              {pros.map((pro) => pro.latitude !== undefined && pro.longitude !== undefined && (
                 <Marker
                   key={pro.id}
                   coordinate={{
@@ -296,7 +315,7 @@ export default function CustomerHome() {
           <View style={styles.onlineCountBadge}>
             <View style={styles.onlinePulse} />
             <Text style={styles.onlineCountText}>
-              {MOCK_PROS.length}名のプロがオンライン
+              {pros.length}名のプロがオンライン
             </Text>
           </View>
         </View>
@@ -355,7 +374,7 @@ export default function CustomerHome() {
             </TouchableOpacity>
           </View>
 
-          {MOCK_PROS.map((pro) => (
+          {pros.map((pro) => (
             <TouchableOpacity
               key={pro.id}
               style={[
@@ -364,15 +383,17 @@ export default function CustomerHome() {
               ]}
               onPress={() => {
                 setSelectedProId(pro.id);
-                mapRef.current?.animateToRegion(
-                  {
-                    latitude: pro.latitude,
-                    longitude: pro.longitude,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                  },
-                  500
-                );
+                if (pro.latitude !== undefined && pro.longitude !== undefined) {
+                  mapRef.current?.animateToRegion(
+                    {
+                      latitude: pro.latitude,
+                      longitude: pro.longitude,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    },
+                    500
+                  );
+                }
               }}
             >
               <View style={styles.proAvatar}>
