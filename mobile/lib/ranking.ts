@@ -20,6 +20,11 @@ export type ProRankData = {
   boostExpiresAt?: string;
   // Improvement plan
   improvementStatus?: string | null;
+  // Location (optional — populated by fetchRankedPros)
+  latitude?: number;
+  longitude?: number;
+  // Top speciality (optional — populated by fetchRankedPros from menus)
+  speciality?: string;
   // Computed
   score?: number;
   isNewcomer?: boolean;
@@ -228,6 +233,11 @@ export async function fetchRankedPros(
         !!row.boost_expires_at &&
         new Date(row.boost_expires_at) > now;
 
+      const menus = (row.menus as any) ?? [];
+      const firstMenuName = Array.isArray(menus) && menus.length > 0
+        ? menus[0]?.name
+        : undefined;
+
       return {
         id: row.id,
         name: (row.profiles as any)?.full_name ?? 'プロ',
@@ -241,6 +251,9 @@ export async function fetchRankedPros(
         boostActive,
         boostExpiresAt: row.boost_expires_at,
         improvementStatus: row.improvement_status,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        speciality: firstMenuName,
       };
     })
     .filter(Boolean) as ProRankData[];

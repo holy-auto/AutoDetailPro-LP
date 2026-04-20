@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,18 +9,38 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useStripe } from '@stripe/stripe-react-native';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
-import { PRO_BOOST } from '@/constants/business-rules';
+import { PRO_BOOST, type BoostPlanId } from '@/constants/business-rules';
 import { useAuth } from '../_layout';
+import { supabase } from '@/lib/supabase';
+import { createBoostPaymentIntent, activateBoost } from '@/lib/boost';
 
 export default function BoostScreen() {
   const { user } = useAuth();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [activePlan, setActivePlan] = useState<{
     id: string;
     expiresAt: string;
   } | null>(null);
   const [purchasing, setPurchasing] = useState(false);
+
+  // Load existing active boost on mount so the UI reflects server state
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      const { data } = await supabase
+        .from('boost_purchases')
+        .select('plan_id, expires_at')
+        .eq('pro_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+      if (data?.plan_id && data?.expires_at) {
+        setActivePlan({ id: data.plan_id, expiresAt: data.expires_at });
+      }
+    })();
+  }, [user?.id]);
 
   const handlePurchase = async () => {
     if (!selectedPlan || !user?.id) return;
@@ -38,14 +58,56 @@ export default function BoostScreen() {
           onPress: async () => {
             setPurchasing(true);
             try {
-              // TODO: Call Supabase Edge Function to create Stripe PaymentIntent
-              // and activate boost on pro_profiles
+              const {
+                clientSecret,
+                paymentIntentId,
+                customerId,
+                ephemeralKey,
+              } = await createBoostPaymentIntent({
+                proId: user.id,
+                planId: plan.id as BoostPlanId,
+                customerEmail: user.email ?? undefined,
+              });
+
+              const { error: initError } = await initPaymentSheet({
+                merchantDisplayName: 'Mobile Wash',
+                paymentIntentClientSecret: clientSecret,
+                customerId: customerId ?? undefined,
+                customerEphemeralKeySecret: ephemeralKey ?? undefined,
+                defaultBillingDetails: {
+                  email: user.email ?? undefined,
+                },
+                allowsDelayedPaymentMethods: false,
+              });
+              if (initError) throw new Error(initError.message);
+
+              const { error: sheetError } = await presentPaymentSheet();
+              if (sheetError) {
+                if (sheetError.code !== 'Canceled') {
+                  Alert.alert('決済エラー', sheetError.message);
+                }
+                return;
+              }
+
+              const result = await activateBoost({
+                proId: user.id,
+                planId: plan.id as BoostPlanId,
+                paymentIntentId,
+              });
+              if (!result.success) {
+                Alert.alert('エラー', result.error ?? 'ブーストの有効化に失敗しました');
+                return;
+              }
+
               const expiresAt = new Date();
               expiresAt.setDate(expiresAt.getDate() + plan.duration_days);
               setActivePlan({ id: plan.id, expiresAt: expiresAt.toISOString() });
               Alert.alert('購入完了', `${plan.name}が有効になりました！`);
-            } catch {
-              Alert.alert('エラー', '購入に失敗しました。再度お試しください。');
+            } catch (e) {
+              Alert.alert(
+                'エラー',
+                e instanceof Error ? e.message : '購入に失敗しました。再度お試しください。',
+              );
             } finally {
               setPurchasing(false);
             }

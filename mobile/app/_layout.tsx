@@ -1,10 +1,14 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, useCallback, useMemo, createContext, useContext } from 'react';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { useRouter, useSegments } from 'expo-router';
 import SplashScreen from './splash';
+
+const STRIPE_PUBLISHABLE_KEY =
+  process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
 // Module-level guard: survives React Strict Mode full remounts
 let _splashFinished = false;
@@ -162,22 +166,27 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthContext.Provider value={authValue}>
-      <StatusBar style="dark" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: '#FAFCFB' },
-          animation: 'slide_from_right',
-        }}
-      >
-        <Stack.Screen name="_auth" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="role-select" />
-        <Stack.Screen name="index" />
-        <Stack.Screen name="customer" />
-        <Stack.Screen name="pro" />
-        <Stack.Screen name="admin" />
-      </Stack>
-    </AuthContext.Provider>
+    <StripeProvider
+      publishableKey={STRIPE_PUBLISHABLE_KEY}
+      merchantIdentifier="merchant.com.mobilewash.app"
+    >
+      <AuthContext.Provider value={authValue}>
+        <StatusBar style="dark" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#FAFCFB' },
+            animation: 'slide_from_right',
+          }}
+        >
+          <Stack.Screen name="_auth" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="role-select" />
+          <Stack.Screen name="index" />
+          <Stack.Screen name="customer" />
+          <Stack.Screen name="pro" />
+          <Stack.Screen name="admin" />
+        </Stack>
+      </AuthContext.Provider>
+    </StripeProvider>
   );
 }

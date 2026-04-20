@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
-  ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,9 +13,12 @@ import { COMPLETION } from '@/constants/business-rules';
 import { showInterstitial, preloadInterstitial } from '@/lib/admob';
 import AdBanner from '@/components/AdBanner';
 import RewardedAdButton from '@/components/RewardedAdButton';
+import { saveCoupon } from '@/lib/coupons';
+import { useAuth } from '../../_layout';
 
 export default function CompleteScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const params = useLocalSearchParams<{
     proName: string;
     totalPrice: string;
@@ -37,9 +39,14 @@ export default function CompleteScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleRewardEarned = (amount: number) => {
-    // TODO: Supabaseにクーポン保存
-    // saveCoupon({ userId, amount, source: 'rewarded_ad' });
+  const handleRewardEarned = async (amount: number) => {
+    if (!user?.id) return;
+    await saveCoupon({
+      customerId: user.id,
+      amount,
+      source: 'rewarded_ad',
+      type: 'fixed',
+    });
   };
 
   const handleReview = () => {
