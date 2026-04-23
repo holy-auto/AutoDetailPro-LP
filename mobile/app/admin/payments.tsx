@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,37 +7,34 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
 import { PAYOUT_SCHEDULES, CASH_SETTLEMENT } from '@/constants/business-rules';
+import { supabase } from '@/lib/supabase';
 
 type Tab = 'overview' | 'payouts' | 'cash' | 'disputes';
 
-const SUMMARY = {
-  total: 892000,
-  online: { captured: 624000, authorized: 45000, refunded: 12000 },
-  cash: { collected: 268000, outstanding: 38000, invoiced: 15000 },
-  fees: { stripe: 18400, instant_payout: 4680 },
+type PayoutRow = {
+  id: string; pro: string; amount: number;
+  schedule: 'instant' | 'weekly' | 'monthly';
+  fee: number; status: string; date: string;
 };
-
-const MOCK_PAYOUTS = [
-  { id: '1', pro: '田中 太郎', amount: 18000, schedule: 'instant' as const, fee: 540, status: 'paid', date: '2026-04-07' },
-  { id: '2', pro: '佐藤 健一', amount: 15000, schedule: 'weekly' as const, fee: 0, status: 'pending', date: '2026-04-07' },
-  { id: '3', pro: '鈴木 美咲', amount: 25000, schedule: 'monthly' as const, fee: 0, status: 'pending', date: '2026-04-05' },
-];
-
-const MOCK_CASH_LEDGER = [
-  { id: '1', pro: '佐藤 健一', cashAmount: 15000, cardBalance: 42000, offsetted: true, date: '2026-04-07' },
-  { id: '2', pro: '木村 翔太', cashAmount: 8000, cardBalance: 0, offsetted: false, invoiced: true, overdue: false, date: '2026-04-05' },
-  { id: '3', pro: '山本 剛', cashAmount: 12000, cardBalance: 0, offsetted: false, invoiced: true, overdue: true, date: '2026-03-28' },
-];
-
-const MOCK_DISPUTES = [
-  { id: '1', customer: '渡辺 さくら', pro: '田中 太郎', service: '手洗い洗車', amount: 3000, reason: '作業の仕上がりに不満', status: 'open', date: '2026-04-07' },
-  { id: '2', customer: '伊藤 翼', pro: '佐藤 健一', service: 'コーティング', amount: 15000, reason: '一部作業未実施', status: 'open', date: '2026-04-06' },
-  { id: '3', customer: '松本 健', pro: '鈴木 美咲', service: 'フルディテイル', amount: 25000, reason: '品質不満', status: 'resolved', refundPercent: 30, date: '2026-04-03' },
-];
+type CashRow = {
+  id: string; pro: string; cashAmount: number; cardBalance: number;
+  offsetted: boolean; invoiced?: boolean; overdue?: boolean; date: string;
+};
+type DisputeRow = {
+  id: string; customer: string; pro: string; service: string;
+  amount: number; reason: string; status: string; refundPercent?: number; date: string;
+};
+type SummaryData = {
+  total: number;
+  online: { captured: number; authorized: number; refunded: number };
+  cash: { collected: number; outstanding: number; invoiced: number };
+  fees: { stripe: number; instant_payout: number };
+};
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: '概要' },
@@ -48,6 +45,130 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function AdminPaymentsScreen() {
   const [tab, setTab] = useState<Tab>('overview');
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<SummaryData>({
+    total: 0,
+    online: { captured: 0, authorized: 0, refunded: 0 },
+    cash: { collected: 0, outstanding: 0, invoiced: 0 },
+    fees: { stripe: 0, instant_payout: 0 },
+  });
+  const [payouts, setPayouts] = useState<PayoutRow[]>([]);
+  const [cashLedger, setCashLedger] = useState<CashRow[]>([]);
+  const [disputes, setDisputes] = useState<DisputeRow[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const [payoutsRes, cashRes, ordersRes] = await Promise.all([
+        supabase
+          .from('payouts')
+          .select('id, amount, fee, schedule, status, paid_at, created_at, pro:pro_id(full_name)')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('cash_settlements')
+          .select('id, amount, net_amount, status, created_at, pro:pro_id(full_name)')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('orders')
+          .select(`
+            id, status, customer_total, total_amount, refund_amount,
+            payment_method, created_at, cancellation_fee, refund_reason,
+            customer:customer_id(full_name),
+            pro:pro_id(full_name),
+            menus:order_menus(menu:menu_id(name))
+          `)
+          .in('status', [
+            'dispute_opened', 'disputed',
+            'fully_refunded', 'partially_refunded',
+          ])
+          .order('created_at', { ascending: false })
+          .limit(50),
+      ]);
+
+      if (payoutsRes.data) {
+        setPayouts(
+          payoutsRes.data.map((row: any) => ({
+            id: row.id,
+            pro: row.pro?.full_name ?? 'プロ',
+            amount: row.amount ?? 0,
+            schedule: (row.schedule ?? 'weekly') as PayoutRow['schedule'],
+            fee: row.fee ?? 0,
+            status: row.status ?? 'pending',
+            date: (row.paid_at ?? row.created_at)?.slice(0, 10) ?? '',
+          })),
+        );
+      }
+
+      if (cashRes.data) {
+        setCashLedger(
+          cashRes.data.map((row: any) => ({
+            id: row.id,
+            pro: row.pro?.full_name ?? 'プロ',
+            cashAmount: row.amount ?? 0,
+            cardBalance: 0,
+            offsetted: row.status === 'offset',
+            invoiced: row.status === 'invoiced' || row.status === 'overdue',
+            overdue: row.status === 'overdue',
+            date: row.created_at?.slice(0, 10) ?? '',
+          })),
+        );
+      }
+
+      if (ordersRes.data) {
+        setDisputes(
+          ordersRes.data.map((row: any) => ({
+            id: row.id,
+            customer: row.customer?.full_name ?? 'お客さま',
+            pro: row.pro?.full_name ?? '未アサイン',
+            service: row.menus?.[0]?.menu?.name ?? 'サービス',
+            amount: row.customer_total ?? row.total_amount ?? 0,
+            reason: row.refund_reason ?? '詳細未記載',
+            status: row.status.startsWith('fully_refunded') || row.status === 'partially_refunded' ? 'resolved' : 'open',
+            refundPercent: row.refund_amount && row.total_amount
+              ? Math.round((row.refund_amount / row.total_amount) * 100)
+              : undefined,
+            date: row.created_at?.slice(0, 10) ?? '',
+          })),
+        );
+      }
+
+      // Rough summary: sum today's captured/authorized from payouts + cash
+      const captured = (payoutsRes.data ?? [])
+        .filter((p: any) => p.status === 'paid')
+        .reduce((sum: number, p: any) => sum + (p.amount ?? 0), 0);
+      const cash = (cashRes.data ?? []).reduce(
+        (sum: number, c: any) => sum + (c.amount ?? 0),
+        0,
+      );
+      const refundTotal = (ordersRes.data ?? []).reduce(
+        (sum: number, o: any) => sum + (o.refund_amount ?? 0),
+        0,
+      );
+      const stripeFees = (payoutsRes.data ?? [])
+        .filter((p: any) => p.schedule === 'instant')
+        .reduce((sum: number, p: any) => sum + (p.fee ?? 0), 0);
+
+      setSummary({
+        total: captured + cash,
+        online: { captured, authorized: 0, refunded: refundTotal },
+        cash: {
+          collected: cash,
+          outstanding: 0,
+          invoiced: (cashRes.data ?? [])
+            .filter((c: any) => c.status === 'invoiced' || c.status === 'overdue')
+            .reduce((sum: number, c: any) => sum + (c.amount ?? 0), 0),
+        },
+        fees: { stripe: stripeFees, instant_payout: stripeFees },
+      });
+      setLoading(false);
+    })();
+  }, []);
+
+  const SUMMARY = summary;
+  const MOCK_PAYOUTS = payouts;
+  const MOCK_CASH_LEDGER = cashLedger;
+  const MOCK_DISPUTES = disputes;
 
   const handleResolveDispute = (id: string, action: 'reject' | 'partial' | 'full') => {
     const labels = { reject: '返金却下', partial: '一部返金(10-50%)', full: '全額返金' };
@@ -80,6 +201,12 @@ export default function AdminPaymentsScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {loading && (
+        <View style={{ paddingVertical: Spacing.xxl, alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* OVERVIEW */}

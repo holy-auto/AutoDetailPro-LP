@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -28,6 +29,7 @@ import {
   type Coords,
   type RouteInfo,
 } from '@/lib/location';
+import { requestMaskedCall, maskPhoneForDisplay } from '@/lib/masked-calls';
 
 // Simulate pro movement path
 const PRO_PATH: Coords[] = [
@@ -213,6 +215,37 @@ export default function TrackingScreen() {
     });
   };
 
+  const handleCallPro = async () => {
+    if (!params.orderId || !params.proId) {
+      Alert.alert('エラー', '注文情報が取得できません');
+      return;
+    }
+    const session = await requestMaskedCall({
+      orderId: params.orderId,
+      calleeId: params.proId,
+    });
+    if (!session) {
+      Alert.alert(
+        '通話できません',
+        'プロへの通話セッションを作成できませんでした。少し時間をおいて再度お試しください。',
+      );
+      return;
+    }
+    Alert.alert(
+      'プロに発信',
+      `${maskPhoneForDisplay(session.proxyNumber)} に発信します（実際の電話番号は表示されません）`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '発信',
+          onPress: () => {
+            Linking.openURL(`tel:${session.proxyNumber.replace(/[^\d+]/g, '')}`);
+          },
+        },
+      ],
+    );
+  };
+
   const handleCancel = () => {
     let message = '';
     if (['payment_authorized', 'requested'].includes(currentStatus)) {
@@ -249,8 +282,15 @@ export default function TrackingScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>予約状況</Text>
-          <Text style={styles.subtitle}>{params.proName}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>予約状況</Text>
+            <Text style={styles.subtitle}>{params.proName}</Text>
+          </View>
+          {params.proId && currentStatus !== 'completed' && (
+            <TouchableOpacity style={styles.callBtn} onPress={handleCallPro}>
+              <Ionicons name="call" size={20} color={Colors.white} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Live Map */}
@@ -491,7 +531,17 @@ export default function TrackingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
-  header: { marginBottom: Spacing.md },
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    marginBottom: Spacing.md, gap: Spacing.md,
+  },
+  callBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.success,
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: Colors.success, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
+  },
   title: {
     fontSize: FontSize.xxl,
     fontWeight: '800',

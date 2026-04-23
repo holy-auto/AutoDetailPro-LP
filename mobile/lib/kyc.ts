@@ -1,6 +1,36 @@
+import * as ImagePicker from 'expo-image-picker';
 import { supabase, verifyAdmin } from './supabase';
 import { KYC } from '@/constants/business-rules';
 import { createConnectAccount } from './stripe-connect';
+
+// ---------------------------------------------------------------------------
+// Image picker helpers for KYC submission UI
+// ---------------------------------------------------------------------------
+
+/** Prompt the user to take a photo with the device camera. */
+export async function pickKycPhotoFromCamera(): Promise<string | null> {
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) return null;
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    quality: 0.8,
+    allowsEditing: false,
+  });
+  if (result.canceled || !result.assets[0]) return null;
+  return result.assets[0].uri;
+}
+
+/** Prompt the user to pick a photo from the library. */
+export async function pickKycPhotoFromLibrary(): Promise<string | null> {
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) return null;
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    quality: 0.8,
+  });
+  if (result.canceled || !result.assets[0]) return null;
+  return result.assets[0].uri;
+}
 
 // =============================================
 // KYC / Identity Verification (本人確認)

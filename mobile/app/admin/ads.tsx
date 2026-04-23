@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,14 @@ import {
   ScrollView,
   Modal,
   TextInput,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
+import { supabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/audit';
+import { useAuth } from '../_layout';
 
 type AdStatus = 'pending_review' | 'active' | 'paused' | 'rejected' | 'expired';
 
@@ -30,38 +35,6 @@ type MockAd = {
   expires_at: string;
 };
 
-const MOCK_ADS: MockAd[] = [
-  {
-    id: '1', title: '春の洗車キャンペーン', description: '全メニュー20%OFF',
-    advertiser_name: '運営', advertiser_type: 'admin', ad_type: 'banner',
-    placement: 'home_top', status: 'active', impressions: 4280, clicks: 312,
-    price: 0, starts_at: '2026-04-01', expires_at: '2026-04-30',
-  },
-  {
-    id: '2', title: '田中プロのコーティング', description: 'ガラスコーティング専門',
-    advertiser_name: '田中太郎', advertiser_type: 'pro', ad_type: 'pro_promotion',
-    placement: 'home_feed', status: 'pending_review', impressions: 0, clicks: 0,
-    price: 2980, starts_at: '2026-04-10', expires_at: '2026-04-17',
-  },
-  {
-    id: '3', title: 'カーコーティング GLOSSY', description: '出張コーティング',
-    advertiser_name: 'GLOSSY株式会社', advertiser_type: 'external', ad_type: 'sponsored',
-    placement: 'search_top', status: 'active', impressions: 1820, clicks: 95,
-    price: 9800, starts_at: '2026-04-05', expires_at: '2026-05-05',
-  },
-  {
-    id: '4', title: 'タイヤ交換キャンペーン', description: '出張タイヤ交換サービス',
-    advertiser_name: 'タイヤワールド', advertiser_type: 'external', ad_type: 'banner',
-    placement: 'order_complete', status: 'pending_review', impressions: 0, clicks: 0,
-    price: 5000, starts_at: '2026-04-12', expires_at: '2026-04-26',
-  },
-  {
-    id: '5', title: 'プレミアム洗車サービス', description: '室内除菌込み',
-    advertiser_name: '佐藤洗車', advertiser_type: 'pro', ad_type: 'pro_promotion',
-    placement: 'pro_list', status: 'rejected', impressions: 0, clicks: 0,
-    price: 1500, starts_at: '2026-04-08', expires_at: '2026-04-11',
-  },
-];
 
 const FILTER_TABS = [
   { key: 'all', label: 'すべて' },
@@ -94,11 +67,53 @@ const PLACEMENT_LABELS: Record<string, string> = {
 };
 
 export default function AdminAdsScreen() {
+  const { user } = useAuth();
   const [filter, setFilter] = useState('all');
-  const [ads, setAds] = useState(MOCK_ADS);
+  const [ads, setAds] = useState<MockAd[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedAd, setSelectedAd] = useState<MockAd | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
+
+  async function refresh() {
+    const { data } = await supabase
+      .from('ads')
+      .select(`
+        id, title, description, advertiser_type, ad_type, placement,
+        status, impressions, clicks, price, starts_at, expires_at,
+        advertiser:advertiser_id(full_name)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (data) {
+      setAds(
+        data.map((row: any): MockAd => ({
+          id: row.id,
+          title: row.title,
+          description: row.description ?? '',
+          advertiser_name:
+            row.advertiser_type === 'admin'
+              ? '運営'
+              : row.advertiser?.full_name ?? '不明',
+          advertiser_type: row.advertiser_type,
+          ad_type: row.ad_type,
+          placement: row.placement,
+          status: (row.status === 'approved' ? 'active' : row.status) as AdStatus,
+          impressions: row.impressions ?? 0,
+          clicks: row.clicks ?? 0,
+          price: row.price ?? 0,
+          starts_at: row.starts_at?.slice(0, 10) ?? '',
+          expires_at: row.expires_at?.slice(0, 10) ?? '',
+        })),
+      );
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
 
   const filtered = filter === 'all' ? ads : ads.filter((a) => a.status === filter);
   const pendingCount = ads.filter((a) => a.status === 'pending_review').length;
@@ -107,26 +122,52 @@ export default function AdminAdsScreen() {
     .filter((a) => ['active', 'expired'].includes(a.status))
     .reduce((sum, a) => sum + a.price, 0);
 
-  const handleApprove = (adId: string) => {
-    setAds((prev) => prev.map((a) => a.id === adId ? { ...a, status: 'active' as AdStatus } : a));
-    setSelectedAd(null);
+  async function applyStatus(adId: string, status: AdStatus, extra?: Record<string, unknown>) {
+    const { error } = await supabase
+      .from('ads')
+      .update({
+        status,
+        reviewed_by: user?.id ?? null,
+        reviewed_at: new Date().toISOString(),
+        ...extra,
+      })
+      .eq('id', adId);
+    if (error) {
+      Alert.alert('エラー', error.message);
+      return false;
+    }
+    setAds((prev) => prev.map((a) => a.id === adId ? { ...a, status } : a));
+    await logAudit({
+      action: 'profile.update',
+      resourceType: 'ad',
+      resourceId: adId,
+      metadata: { status, ...extra },
+    });
+    return true;
+  }
+
+  const handleApprove = async (adId: string) => {
+    if (await applyStatus(adId, 'active')) {
+      setSelectedAd(null);
+    }
   };
 
-  const handleReject = (adId: string) => {
-    setAds((prev) => prev.map((a) => a.id === adId ? { ...a, status: 'rejected' as AdStatus } : a));
-    setSelectedAd(null);
-    setShowRejectInput(false);
-    setRejectionReason('');
+  const handleReject = async (adId: string) => {
+    const reason = rejectionReason.trim();
+    if (!reason) return;
+    if (await applyStatus(adId, 'rejected', { rejection_reason: reason })) {
+      setSelectedAd(null);
+      setShowRejectInput(false);
+      setRejectionReason('');
+    }
   };
 
-  const handlePause = (adId: string) => {
-    setAds((prev) => prev.map((a) => a.id === adId ? { ...a, status: 'paused' as AdStatus } : a));
-    setSelectedAd(null);
+  const handlePause = async (adId: string) => {
+    if (await applyStatus(adId, 'paused')) setSelectedAd(null);
   };
 
-  const handleResume = (adId: string) => {
-    setAds((prev) => prev.map((a) => a.id === adId ? { ...a, status: 'active' as AdStatus } : a));
-    setSelectedAd(null);
+  const handleResume = async (adId: string) => {
+    if (await applyStatus(adId, 'active')) setSelectedAd(null);
   };
 
   return (
@@ -175,6 +216,12 @@ export default function AdminAdsScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {loading && (
+        <View style={{ paddingVertical: Spacing.xxl, alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      )}
 
       {/* Ad List */}
       <ScrollView contentContainerStyle={styles.content}>

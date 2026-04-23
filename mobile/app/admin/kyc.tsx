@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,20 @@ import {
   Modal,
   TextInput,
   FlatList,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
+import { supabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/audit';
+import { useAuth } from '../_layout';
 
-type KycStatus = 'pending' | 'approved' | 'rejected';
+type KycStatus = 'pending' | 'approved' | 'rejected' | 'resubmit';
 
 type KycSubmission = {
   id: string;
+  userId: string;
   userName: string;
   userType: 'customer' | 'pro';
   submissionDate: string;
@@ -25,74 +31,12 @@ type KycSubmission = {
   rejectionReason?: string;
 };
 
-const MOCK_SUBMISSIONS: KycSubmission[] = [
-  {
-    id: '1',
-    userName: '鈴木 一郎',
-    userType: 'pro',
-    submissionDate: '2026-04-08',
-    documentType: '運転免許証',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    userName: '佐藤 美咲',
-    userType: 'pro',
-    submissionDate: '2026-04-07',
-    documentType: 'マイナンバーカード',
-    status: 'pending',
-  },
-  {
-    id: '3',
-    userName: '田中 大輔',
-    userType: 'pro',
-    submissionDate: '2026-04-07',
-    documentType: '運転免許証',
-    status: 'pending',
-  },
-  {
-    id: '4',
-    userName: '高橋 翔太',
-    userType: 'customer',
-    submissionDate: '2026-04-06',
-    documentType: 'パスポート',
-    status: 'pending',
-  },
-  {
-    id: '5',
-    userName: '山田 花子',
-    userType: 'pro',
-    submissionDate: '2026-04-05',
-    documentType: '運転免許証',
-    status: 'approved',
-  },
-  {
-    id: '6',
-    userName: '中村 健',
-    userType: 'pro',
-    submissionDate: '2026-04-04',
-    documentType: 'マイナンバーカード',
-    status: 'approved',
-  },
-  {
-    id: '7',
-    userName: '木村 由美',
-    userType: 'pro',
-    submissionDate: '2026-04-03',
-    documentType: '運転免許証',
-    status: 'rejected',
-    rejectionReason: '書類の文字が不鮮明で確認できません',
-  },
-  {
-    id: '8',
-    userName: '渡辺 太郎',
-    userType: 'customer',
-    submissionDate: '2026-04-02',
-    documentType: 'パスポート',
-    status: 'rejected',
-    rejectionReason: '顔写真とセルフィーが一致しません',
-  },
-];
+const DOC_TYPE_LABELS: Record<string, string> = {
+  drivers_license: '運転免許証',
+  my_number: 'マイナンバーカード',
+  passport: 'パスポート',
+  residence_card: '在留カード',
+};
 
 type FilterTab = 'pending' | 'approved' | 'rejected';
 
@@ -100,6 +44,7 @@ const STATUS_CONFIG: Record<KycStatus, { label: string; color: string; bg: strin
   pending: { label: '審査待ち', color: Colors.warning, bg: Colors.warning + '20', icon: 'time' },
   approved: { label: '承認済み', color: Colors.success, bg: Colors.success + '20', icon: 'checkmark-circle' },
   rejected: { label: '却下', color: Colors.error, bg: Colors.error + '20', icon: 'close-circle' },
+  resubmit: { label: '再提出', color: Colors.warning, bg: Colors.warning + '20', icon: 'refresh' },
 };
 
 const DOC_TYPE_COLORS: Record<string, { color: string; bg: string }> = {
@@ -109,13 +54,52 @@ const DOC_TYPE_COLORS: Record<string, { color: string; bg: string }> = {
 };
 
 export default function AdminKycScreen() {
+  const { user } = useAuth();
   const [filterTab, setFilterTab] = useState<FilterTab>('pending');
-  const [submissions, setSubmissions] = useState<KycSubmission[]>(MOCK_SUBMISSIONS);
+  const [submissions, setSubmissions] = useState<KycSubmission[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState<KycSubmission | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
 
-  const filteredSubmissions = submissions.filter((s) => s.status === filterTab);
+  async function refresh() {
+    const { data, error } = await supabase
+      .from('kyc_verifications')
+      .select(`
+        id, user_id, status, id_document_type, rejection_reason, created_at,
+        profile:user_id(full_name, role)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error || !data) {
+      setLoading(false);
+      return;
+    }
+
+    const rows: KycSubmission[] = data.map((row: any) => ({
+      id: row.id,
+      userId: row.user_id,
+      userName: row.profile?.full_name ?? '未入力',
+      userType: row.profile?.role === 'customer' ? 'customer' : 'pro',
+      submissionDate: row.created_at?.slice(0, 10) ?? '',
+      documentType: DOC_TYPE_LABELS[row.id_document_type] ?? row.id_document_type,
+      status: row.status as KycStatus,
+      rejectionReason: row.rejection_reason ?? undefined,
+    }));
+    setSubmissions(rows);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const filteredSubmissions = submissions.filter((s) =>
+    filterTab === 'pending'
+      ? s.status === 'pending' || s.status === 'resubmit'
+      : s.status === filterTab,
+  );
 
   const pendingCount = submissions.filter((s) => s.status === 'pending').length;
   const approvedCount = submissions.filter((s) => s.status === 'approved').length;
@@ -127,7 +111,25 @@ export default function AdminKycScreen() {
     { key: 'rejected', label: '却下', count: rejectedCount },
   ];
 
-  const handleApprove = (id: string) => {
+  const handleApprove = async (id: string) => {
+    const { error } = await supabase
+      .from('kyc_verifications')
+      .update({
+        status: 'approved',
+        rejection_reason: null,
+        reviewed_by: user?.id ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+    if (error) {
+      Alert.alert('エラー', error.message);
+      return;
+    }
+    await logAudit({
+      action: 'kyc.approve',
+      resourceType: 'kyc_verification',
+      resourceId: id,
+    });
     setSubmissions((prev) =>
       prev.map((s) => (s.id === id ? { ...s, status: 'approved' as KycStatus } : s)),
     );
@@ -136,12 +138,32 @@ export default function AdminKycScreen() {
     setRejectionReason('');
   };
 
-  const handleReject = (id: string) => {
+  const handleReject = async (id: string) => {
     if (!rejectionReason.trim()) return;
+    const reason = rejectionReason.trim();
+    const { error } = await supabase
+      .from('kyc_verifications')
+      .update({
+        status: 'rejected',
+        rejection_reason: reason,
+        reviewed_by: user?.id ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+    if (error) {
+      Alert.alert('エラー', error.message);
+      return;
+    }
+    await logAudit({
+      action: 'kyc.reject',
+      resourceType: 'kyc_verification',
+      resourceId: id,
+      metadata: { reason },
+    });
     setSubmissions((prev) =>
       prev.map((s) =>
         s.id === id
-          ? { ...s, status: 'rejected' as KycStatus, rejectionReason: rejectionReason.trim() }
+          ? { ...s, status: 'rejected' as KycStatus, rejectionReason: reason }
           : s,
       ),
     );
@@ -185,6 +207,12 @@ export default function AdminKycScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {loading && (
+        <View style={{ paddingVertical: Spacing.xxl, alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      )}
 
       {/* Submissions List */}
       <FlatList

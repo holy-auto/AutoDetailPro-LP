@@ -111,6 +111,18 @@ export default function LoginScreen() {
               </>
             )}
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.authButton, styles.phoneButton]}
+            onPress={() => router.push('/_auth/phone')}
+            disabled={loading !== null}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="phone-portrait" size={20} color={Colors.primary} />
+            <Text style={[styles.authButtonText, styles.phoneButtonText]}>
+              電話番号でサインイン
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.terms}>
@@ -219,6 +231,14 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     color: Colors.textPrimary,
+  },
+  phoneButton: {
+    backgroundColor: Colors.primaryFaint,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+  },
+  phoneButtonText: {
+    color: Colors.primary,
   },
   terms: {
     fontSize: FontSize.xs,

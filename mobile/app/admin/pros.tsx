@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,15 @@ import {
   TextInput,
   FlatList,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
+import { supabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/audit';
+import { startImprovementPlan } from '@/lib/pro-management';
+import { purchaseBoost } from '@/lib/pro-management';
 
 type ProStatus = 'online' | 'offline' | 'improvement' | 'suspended';
 
@@ -39,7 +45,7 @@ type ProData = {
   email: string;
 };
 
-const MOCK_PROS: ProData[] = [
+const FALLBACK_PROS: ProData[] = [
   {
     id: '1',
     name: '田中 太郎',
@@ -161,16 +167,110 @@ const STATUS_CONFIG: Record<ProStatus, { label: string; color: string; bg: strin
   suspended: { label: '停止中', color: Colors.error, bg: Colors.error + '15' },
 };
 
+async function loadPros(): Promise<ProData[]> {
+  // Fetch pro_profiles + their public profile info, and aggregate reviews
+  const { data: pros } = await supabase
+    .from('pro_profiles')
+    .select(`
+      id, is_online, suspended, boost_plan_id, boost_expires_at,
+      improvement_status, improvement_started_at,
+      completion_rate, created_at,
+      profile:id(full_name, phone, email),
+      menus(name)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (!pros) return FALLBACK_PROS;
+
+  // Aggregate ratings for all pros in one query
+  const proIds = pros.map((p: any) => p.id);
+  const [{ data: reviews }, { data: orderCounts }, { data: payouts }] =
+    await Promise.all([
+      supabase.from('reviews').select('target_id, rating').in('target_id', proIds),
+      supabase.from('orders').select('pro_id, status').in('pro_id', proIds),
+      supabase.from('payouts').select('pro_id, amount').in('pro_id', proIds),
+    ]);
+
+  const ratingMap = new Map<string, { sum: number; count: number }>();
+  for (const r of reviews ?? []) {
+    const entry = ratingMap.get(r.target_id) ?? { sum: 0, count: 0 };
+    entry.sum += r.rating;
+    entry.count += 1;
+    ratingMap.set(r.target_id, entry);
+  }
+
+  const orderCountMap = new Map<string, number>();
+  for (const o of orderCounts ?? []) {
+    orderCountMap.set(o.pro_id, (orderCountMap.get(o.pro_id) ?? 0) + 1);
+  }
+
+  const earningsMap = new Map<string, number>();
+  for (const p of payouts ?? []) {
+    earningsMap.set(p.pro_id, (earningsMap.get(p.pro_id) ?? 0) + (p.amount ?? 0));
+  }
+
+  const now = new Date();
+  return pros.map((row: any): ProData => {
+    const rStats = ratingMap.get(row.id) ?? { sum: 0, count: 0 };
+    const rating = rStats.count > 0 ? Math.round((rStats.sum / rStats.count) * 10) / 10 : 0;
+
+    let status: ProStatus = 'offline';
+    if (row.suspended) status = 'suspended';
+    else if (row.improvement_status === 'active') status = 'improvement';
+    else if (row.is_online) status = 'online';
+
+    const boostActive =
+      !!row.boost_plan_id &&
+      !!row.boost_expires_at &&
+      new Date(row.boost_expires_at) > now;
+
+    return {
+      id: row.id,
+      name: row.profile?.full_name ?? 'プロ',
+      rating,
+      reviews: rStats.count,
+      status,
+      orderCount: orderCountMap.get(row.id) ?? 0,
+      completionRate: row.completion_rate ?? 0,
+      joinDate: row.created_at?.slice(0, 10) ?? '',
+      categories: (row.menus ?? []).map((m: any) => m.name).slice(0, 3),
+      mysteryShopScore: null,
+      improvementPlan:
+        row.improvement_status === 'active'
+          ? { active: true, startDate: row.improvement_started_at ?? undefined, targetRating: 4.0 }
+          : null,
+      boostActive,
+      earnings: earningsMap.get(row.id) ?? 0,
+      phone: row.profile?.phone ?? '',
+      email: row.profile?.email ?? '',
+    };
+  });
+}
+
 export default function AdminProsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPro, setSelectedPro] = useState<ProData | null>(null);
+  const [pros, setPros] = useState<ProData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filteredPros = MOCK_PROS.filter((pro) =>
+  const refresh = async () => {
+    const list = await loadPros();
+    setPros(list);
+    setLoading(false);
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const filteredPros = pros.filter((pro) =>
     pro.name.includes(searchQuery) ||
     pro.categories.some((cat) => cat.includes(searchQuery)),
   );
 
-  const onlineCount = MOCK_PROS.filter((p) => p.status === 'online').length;
+  const onlineCount = pros.filter((p) => p.status === 'online').length;
 
   const getRatingColor = (rating: number) => {
     if (rating >= 4.5) return Colors.success;
@@ -199,29 +299,87 @@ export default function AdminProsScreen() {
       `${pro.name}に改善プランを開始しますか？\n\n・期間: 30日間\n・目標: 評価 4.0 以上\n・優先表示から除外されます`,
       [
         { text: 'キャンセル', style: 'cancel' },
-        { text: '開始する', onPress: () => Alert.alert('完了', '改善プランを開始しました') },
+        {
+          text: '開始する',
+          onPress: async () => {
+            const result = await startImprovementPlan(pro.id, '管理者による手動開始', pro.rating);
+            if (!result.success) {
+              Alert.alert('エラー', result.error ?? '改善プラン開始に失敗しました');
+              return;
+            }
+            await logAudit({
+              action: 'pro.suspend',
+              resourceType: 'pro_profile',
+              resourceId: pro.id,
+              metadata: { reason: 'improvement_plan_started', current_rating: pro.rating },
+            });
+            Alert.alert('完了', '改善プランを開始しました');
+            refresh();
+          },
+        },
       ],
     );
   };
 
   const handleSuspend = (pro: ProData) => {
+    const isSuspended = pro.status === 'suspended';
     Alert.alert(
-      'アカウント停止',
-      `${pro.name}のアカウントを停止しますか？\n\n・新規受注が停止されます\n・この操作は後から解除できます`,
+      isSuspended ? 'アカウント停止解除' : 'アカウント停止',
+      isSuspended
+        ? `${pro.name}のアカウント停止を解除しますか？`
+        : `${pro.name}のアカウントを停止しますか？\n\n・新規受注が停止されます\n・この操作は後から解除できます`,
       [
         { text: 'キャンセル', style: 'cancel' },
-        { text: '停止する', style: 'destructive', onPress: () => Alert.alert('完了', 'アカウントを停止しました') },
+        {
+          text: isSuspended ? '解除する' : '停止する',
+          style: isSuspended ? 'default' : 'destructive',
+          onPress: async () => {
+            const { error } = await supabase
+              .from('pro_profiles')
+              .update({ suspended: !isSuspended, is_online: isSuspended ? false : false })
+              .eq('id', pro.id);
+            if (error) {
+              Alert.alert('エラー', error.message);
+              return;
+            }
+            await logAudit({
+              action: isSuspended ? 'pro.unsuspend' : 'pro.suspend',
+              resourceType: 'pro_profile',
+              resourceId: pro.id,
+              metadata: { reason: 'admin_manual' },
+            });
+            Alert.alert('完了', isSuspended ? 'アカウント停止を解除しました' : 'アカウントを停止しました');
+            refresh();
+          },
+        },
       ],
     );
   };
 
   const handleBoost = (pro: ProData) => {
     Alert.alert(
-      'ブースト付与',
-      `${pro.name}にブーストを付与しますか？\n\n・検索結果で優先表示されます\n・期間: 7日間`,
+      'ブースト付与（7日間）',
+      `${pro.name}にブーストを付与しますか？\n\n・検索結果で優先表示されます\n・期間: 7日間\n・支払い不要（管理者特典）`,
       [
         { text: 'キャンセル', style: 'cancel' },
-        { text: '付与する', onPress: () => Alert.alert('完了', 'ブーストを付与しました') },
+        {
+          text: '付与する',
+          onPress: async () => {
+            const result = await purchaseBoost(pro.id, 'boost_7d');
+            if (!result.success) {
+              Alert.alert('エラー', result.error ?? 'ブースト付与に失敗しました');
+              return;
+            }
+            await logAudit({
+              action: 'boost.activate',
+              resourceType: 'pro_profile',
+              resourceId: pro.id,
+              metadata: { granted_by: 'admin', plan_id: 'boost_7d' },
+            });
+            Alert.alert('完了', 'ブーストを付与しました');
+            refresh();
+          },
+        },
       ],
     );
   };
@@ -232,7 +390,7 @@ export default function AdminProsScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>プロ管理</Text>
         <Text style={styles.subtitle}>
-          {MOCK_PROS.length}名登録 / {onlineCount}名オンライン
+          {pros.length}名登録 / {onlineCount}名オンライン
         </Text>
       </View>
 
@@ -256,12 +414,31 @@ export default function AdminProsScreen() {
       </View>
 
       {/* Pro List */}
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
       <FlatList
         data={filteredPros}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         removeClippedSubviews
         windowSize={7}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              refresh();
+            }}
+          />
+        }
+        ListEmptyComponent={
+          <View style={{ padding: Spacing.xxl, alignItems: 'center' }}>
+            <Text style={{ color: Colors.textMuted }}>該当するプロがいません</Text>
+          </View>
+        }
         renderItem={({ item: pro }) => {
           const statusConfig = STATUS_CONFIG[pro.status];
           return (
@@ -343,6 +520,7 @@ export default function AdminProsScreen() {
           );
         }}
       />
+      )}
 
       {/* Detail Modal */}
       <Modal

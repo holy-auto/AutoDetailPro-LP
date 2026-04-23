@@ -84,6 +84,58 @@ export async function signInWithGoogle() {
 }
 
 // Sign out
+// =============================================
+// Phone / SMS OTP authentication
+// =============================================
+// Uses Supabase Auth phone provider. Configure in Supabase Studio →
+// Authentication → Providers → Phone (Twilio/MessageBird/Vonage).
+//
+// Japanese numbers must be sent in E.164: 09012345678 → +819012345678
+
+/** Convert local-formatted JP phone to E.164. Returns null if invalid. */
+export function normalizeJpPhone(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return null;
+  // Already +81…
+  if (raw.trim().startsWith('+')) return raw.trim();
+  // Local 0-prefixed (most common): 09012345678 → +819012345678
+  if (digits.startsWith('0') && digits.length >= 10) {
+    return `+81${digits.slice(1)}`;
+  }
+  // Bare with no leading 0
+  if (digits.length >= 9 && digits.length <= 11) {
+    return `+81${digits}`;
+  }
+  return null;
+}
+
+/** Send a 6-digit OTP code to the given JP phone via Supabase Auth. */
+export async function sendPhoneOtp(rawPhone: string): Promise<{ ok: boolean; error?: string }> {
+  const phone = normalizeJpPhone(rawPhone);
+  if (!phone) return { ok: false, error: '電話番号の形式が正しくありません' };
+
+  const { error } = await supabase.auth.signInWithOtp({ phone });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/** Verify the 6-digit code returned by Supabase Auth and create/sign-in session. */
+export async function verifyPhoneOtp(
+  rawPhone: string,
+  token: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const phone = normalizeJpPhone(rawPhone);
+  if (!phone) return { ok: false, error: '電話番号の形式が正しくありません' };
+
+  const { error } = await supabase.auth.verifyOtp({
+    phone,
+    token: token.trim(),
+    type: 'sms',
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;

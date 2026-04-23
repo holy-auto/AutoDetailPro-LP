@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,11 @@ import {
   Modal,
   TextInput,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
+import { supabase } from '@/lib/supabase';
 
 type Message = {
   id: string;
@@ -35,97 +37,67 @@ type ChatRoom = {
 
 const NG_WORDS = ['バカ', '死ね', 'ふざけるな'];
 
-const MOCK_CHAT_ROOMS: ChatRoom[] = [
-  {
-    id: '1',
-    customerName: '山田 太郎',
-    proName: '田中 太郎',
-    lastMessage: '到着予定は15時頃になります',
-    lastMessageTime: '5分前',
-    messageCount: 12,
-    flagged: false,
-    active: true,
-    messages: [
-      { id: 'm1', sender: 'customer', text: '本日の予約について確認です', time: '14:00' },
-      { id: 'm2', sender: 'pro', text: 'はい、承知しました。何でしょうか？', time: '14:02' },
-      { id: 'm3', sender: 'customer', text: '到着時間を教えてください', time: '14:05' },
-      { id: 'm4', sender: 'pro', text: '到着予定は15時頃になります', time: '14:07' },
-    ],
-  },
-  {
-    id: '2',
-    customerName: '高橋 花子',
-    proName: '佐藤 健一',
-    lastMessage: 'ふざけるな！全然綺麗になってない',
-    lastMessageTime: '15分前',
-    messageCount: 28,
-    flagged: true,
-    active: true,
-    messages: [
-      { id: 'm1', sender: 'pro', text: '作業完了しました。ご確認お願いします。', time: '13:00' },
-      { id: 'm2', sender: 'customer', text: '確認しましたが、右側面に汚れが残っています', time: '13:15' },
-      { id: 'm3', sender: 'pro', text: '申し訳ございません。再度確認します。', time: '13:18' },
-      { id: 'm4', sender: 'customer', text: 'ふざけるな！全然綺麗になってない', time: '13:30', hasNgWord: true },
-      { id: 'm5', sender: 'admin', text: '【管理者】お客様、プロの方、冷静にお話しください。問題解決に向けてサポートいたします。', time: '13:35' },
-    ],
-  },
-  {
-    id: '3',
-    customerName: '田中 一郎',
-    proName: '鈴木 美咲',
-    lastMessage: 'ありがとうございました！大満足です',
-    lastMessageTime: '1時間前',
-    messageCount: 8,
-    flagged: false,
-    active: false,
-    messages: [
-      { id: 'm1', sender: 'customer', text: '本日はよろしくお願いします', time: '10:00' },
-      { id: 'm2', sender: 'pro', text: 'よろしくお願いします！', time: '10:01' },
-      { id: 'm3', sender: 'pro', text: '作業完了しました', time: '11:30' },
-      { id: 'm4', sender: 'customer', text: 'ありがとうございました！大満足です', time: '11:45' },
-    ],
-  },
-  {
-    id: '4',
-    customerName: '佐々木 健',
-    proName: '木村 翔太',
-    lastMessage: 'バカにしてるのか？時間通りに来い',
-    lastMessageTime: '30分前',
-    messageCount: 15,
-    flagged: true,
-    active: true,
-    messages: [
-      { id: 'm1', sender: 'customer', text: '予約時間を過ぎていますが...', time: '12:00' },
-      { id: 'm2', sender: 'pro', text: '申し訳ありません、渋滞で遅れています', time: '12:05' },
-      { id: 'm3', sender: 'customer', text: 'もう30分も待ってます', time: '12:30' },
-      { id: 'm4', sender: 'customer', text: 'バカにしてるのか？時間通りに来い', time: '12:35', hasNgWord: true },
-    ],
-  },
-  {
-    id: '5',
-    customerName: '中村 美咲',
-    proName: '渡辺 大輔',
-    lastMessage: '次回もお願いしたいです',
-    lastMessageTime: '2時間前',
-    messageCount: 6,
-    flagged: false,
-    active: false,
-    messages: [
-      { id: 'm1', sender: 'customer', text: 'コーティングもお願いできますか？', time: '09:00' },
-      { id: 'm2', sender: 'pro', text: 'もちろんです！追加料金は5000円になります', time: '09:02' },
-      { id: 'm3', sender: 'customer', text: 'お願いします', time: '09:03' },
-      { id: 'm4', sender: 'customer', text: '次回もお願いしたいです', time: '10:30' },
-    ],
-  },
-];
 
 type FilterTab = 'all' | 'flagged' | 'active';
+
+async function loadChatRooms(): Promise<ChatRoom[]> {
+  const { data: chatRoomsData } = await supabase
+    .from('chat_rooms')
+    .select(`
+      id, status, flagged_reason, created_at,
+      customer:customer_id(full_name),
+      pro:pro_id(full_name),
+      messages:chat_messages(id, sender_id, message, flagged, created_at)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (!chatRoomsData) return [];
+
+  return chatRoomsData.map((row: any): ChatRoom => {
+    const messages = (row.messages ?? [])
+      .sort((a: any, b: any) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      )
+      .map((m: any): Message => ({
+        id: m.id,
+        sender: m.sender_id === row.customer?.id ? 'customer' : 'pro',
+        text: m.message ?? '',
+        time: new Date(m.created_at).toLocaleTimeString('ja-JP', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        hasNgWord: !!m.flagged,
+      }));
+    const last = messages[messages.length - 1];
+    return {
+      id: row.id,
+      customerName: row.customer?.full_name ?? 'お客さま',
+      proName: row.pro?.full_name ?? 'プロ',
+      lastMessage: last?.text ?? '',
+      lastMessageTime: last?.time ?? '',
+      messageCount: messages.length,
+      flagged: row.status === 'flagged' || messages.some((m: Message) => m.hasNgWord),
+      active: row.status === 'active',
+      messages,
+    };
+  });
+}
 
 export default function AdminChatsScreen() {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
   const [adminMessage, setAdminMessage] = useState('');
-  const [rooms, setRooms] = useState<ChatRoom[]>(MOCK_CHAT_ROOMS);
+  const [rooms, setRooms] = useState<ChatRoom[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const list = await loadChatRooms();
+      setRooms(list);
+      setLoading(false);
+    })();
+  }, []);
 
   const filteredRooms = rooms.filter((room) => {
     switch (filterTab) {
@@ -238,6 +210,12 @@ export default function AdminChatsScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {loading && (
+        <View style={{ paddingVertical: Spacing.xxl, alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      )}
 
       {/* Chat Room List */}
       <FlatList
