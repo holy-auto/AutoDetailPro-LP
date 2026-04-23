@@ -41,6 +41,7 @@
       "expo-location",
       "expo-secure-store",
       "expo-notifications",
+      "@sentry/react-native/expo",
       "./plugins/with-splashscreen-logo.js",
       "./plugins/with-android-emulator-support.js"
     ]

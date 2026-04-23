@@ -6,19 +6,25 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { useRouter, useSegments } from 'expo-router';
 import SplashScreen from './splash';
+import { initSentry, setSentryUser, wrap } from '@/lib/sentry';
 
 const STRIPE_PUBLISHABLE_KEY =
   process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+
+// Initialise Sentry once, before any component mounts. No-op when DSN is unset.
+initSentry();
 
 // Module-level guard: survives React Strict Mode full remounts
 let _splashFinished = false;
 
 type UserRole = 'customer' | 'pro' | 'admin' | null;
+type KycStatus = 'missing' | 'pending' | 'approved' | 'rejected' | 'resubmit' | null;
 
 type AuthContextType = {
   session: Session | null;
   user: User | null;
   role: UserRole;
+  kycStatus: KycStatus;
   isGuest: boolean;
   setRole: (role: UserRole) => void;
   loading: boolean;
@@ -29,6 +35,7 @@ export const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   role: null,
+  kycStatus: null,
   isGuest: true,
   setRole: () => {},
   loading: true,
@@ -37,9 +44,10 @@ export const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-export default function RootLayout() {
+function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole>(null);
+  const [kycStatus, setKycStatus] = useState<KycStatus>(null);
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(!_splashFinished);
   const segments = useSegments();
@@ -88,7 +96,25 @@ export default function RootLayout() {
       .eq('id', userId)
       .single();
 
-    setRole(data?.role ?? null);
+    const userRole: UserRole = data?.role ?? null;
+    setRole(userRole);
+    setSentryUser(userId, userRole);
+
+    // For pros, also load KYC status — pros without approved KYC are blocked
+    // from accessing pro screens (Uber India 2014 lesson).
+    if (userRole === 'pro') {
+      const { data: kyc } = await supabase
+        .from('kyc_verifications')
+        .select('status')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setKycStatus(kyc?.status ?? 'missing');
+    } else {
+      setKycStatus(null);
+    }
+
     setLoading(false);
   }
 
@@ -97,6 +123,7 @@ export default function RootLayout() {
     if (loading) return;
 
     const inAuthGroup = segments[0] === '_auth';
+    const inKycFlow = (segments as string[])[1] === 'kyc';
 
     if (session && inAuthGroup) {
       if (!role) {
@@ -116,7 +143,19 @@ export default function RootLayout() {
         router.replace('/_auth/login');
       }
     }
-  }, [session, role, segments, loading]);
+
+    // KYC gate for pros — must be 'approved' to access pro screens.
+    // Allow them on the KYC submission screen itself so they can complete it.
+    if (
+      session &&
+      role === 'pro' &&
+      segments[0] === 'pro' &&
+      !inKycFlow &&
+      kycStatus !== 'approved'
+    ) {
+      router.replace('/pro/kyc' as any);
+    }
+  }, [session, role, kycStatus, segments, loading]);
 
   const handleSetRole = async (newRole: UserRole) => {
     if (!session?.user || !newRole) return;
@@ -148,12 +187,13 @@ export default function RootLayout() {
       session,
       user: session?.user ?? null,
       role,
+      kycStatus,
       isGuest: !session,
       setRole: handleSetRole,
       loading,
       requireAuth,
     }),
-    [session, role, loading, requireAuth],
+    [session, role, kycStatus, loading, requireAuth],
   );
 
   if (showSplash) {
@@ -190,3 +230,5 @@ export default function RootLayout() {
     </StripeProvider>
   );
 }
+
+export default wrap(RootLayout);
