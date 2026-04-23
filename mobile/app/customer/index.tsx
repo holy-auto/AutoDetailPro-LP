@@ -134,7 +134,7 @@ export default function CustomerHome() {
           Alert.alert(
             '位置情報の使用',
             '近くのプロを表示するために現在地を使用します。',
-            [{ text: 'OK', onPress: resolve }],
+            [{ text: 'OK', onPress: () => resolve() }],
           );
         });
       });

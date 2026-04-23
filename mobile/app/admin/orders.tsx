@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,13 @@ import {
   TouchableOpacity,
   SafeAreaView,
   FlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
 import { ORDER_STATUSES, type OrderStatus } from '@/constants/categories';
+import { supabase } from '@/lib/supabase';
 
 const STATUS_LABELS: Record<string, { text: string; color: string; bg: string }> = {
   searching: { text: '検索中', color: Colors.info, bg: Colors.info + '20' },
@@ -20,21 +23,72 @@ const STATUS_LABELS: Record<string, { text: string; color: string; bg: string }>
   completed: { text: '完了', color: Colors.success, bg: Colors.success + '20' },
 };
 
-const MOCK_ORDERS = [
-  { id: '1', customer: '山田 太郎', pro: '田中 太郎', service: '手洗い洗車', amount: 3000, status: 'in_progress' as OrderStatus, date: '2026-04-07 10:30', payment: 'online' },
-  { id: '2', customer: '高橋 花子', pro: '佐藤 健一', service: 'ガラスコーティング', amount: 15000, status: 'completed' as OrderStatus, date: '2026-04-07 09:00', payment: 'online' },
-  { id: '3', customer: '田中 一郎', pro: '鈴木 美咲', service: 'フルディテイル', amount: 25000, status: 'accepted' as OrderStatus, date: '2026-04-07 08:30', payment: 'cash' },
-  { id: '4', customer: '佐々木 翼', pro: '田中 太郎', service: '内装クリーニング', amount: 4500, status: 'completed' as OrderStatus, date: '2026-04-06 14:00', payment: 'online' },
-  { id: '5', customer: '渡辺 さくら', pro: '鈴木 美咲', service: '磨き・研磨', amount: 10000, status: 'searching' as OrderStatus, date: '2026-04-07 11:00', payment: 'online' },
-];
+type OrderRow = {
+  id: string;
+  customer: string;
+  pro: string;
+  service: string;
+  amount: number;
+  status: OrderStatus;
+  date: string;
+  payment: string;
+};
 
 export default function AdminOrdersScreen() {
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function loadOrders() {
+    const query = supabase
+      .from('orders')
+      .select(`
+        id, status, created_at, total_amount, customer_total, payment_method,
+        customer:customer_id(full_name),
+        pro:pro_id(full_name),
+        menus:order_menus(menu:menu_id(name))
+      `)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    const { data, error } = await query;
+    if (error || !data) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    const rows: OrderRow[] = data.map((row: any) => ({
+      id: row.id,
+      customer: row.customer?.full_name ?? 'お客さま',
+      pro: row.pro?.full_name ?? '未アサイン',
+      service: row.menus?.[0]?.menu?.name ?? 'サービス',
+      amount: row.customer_total ?? row.total_amount ?? 0,
+      status: row.status as OrderStatus,
+      date: new Date(row.created_at).toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).replace(/\//g, '-'),
+      payment: row.payment_method ?? 'online',
+    }));
+
+    setOrders(rows);
+    setLoading(false);
+    setRefreshing(false);
+  }
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
 
   const filtered =
     filter === 'all'
-      ? MOCK_ORDERS
-      : MOCK_ORDERS.filter((o) => o.status === filter);
+      ? orders
+      : orders.filter((o) => o.status === filter);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -68,10 +122,29 @@ export default function AdminOrdersScreen() {
         )}
       />
 
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadOrders();
+            }}
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>該当する注文はありません</Text>
+          </View>
+        }
         renderItem={({ item }) => {
           const status = STATUS_LABELS[item.status] ?? STATUS_LABELS.completed;
           return (
@@ -107,6 +180,7 @@ export default function AdminOrdersScreen() {
           );
         }}
       />
+      )}
     </SafeAreaView>
   );
 }
@@ -214,6 +288,19 @@ const styles = StyleSheet.create({
   },
   cardPayment: {
     fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  empty: {
+    padding: Spacing.xxl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: FontSize.sm,
     color: Colors.textMuted,
   },
 });

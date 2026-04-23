@@ -7,71 +7,45 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
 import {
   MATCHING,
-  CANCELLATION,
-  ORDER_STATUS,
+  PAYMENT_METHOD,
   ORDER_STATUS_LABELS,
   ORDER_STATUS_COLORS,
   type OrderStatus,
 } from '@/constants/business-rules';
+import { supabase } from '@/lib/supabase';
+import { updateOrderStatus, proMarkDone } from '@/lib/orders';
+import { useAuth } from '../_layout';
 
 interface ProRequest {
   id: string;
   customer: string;
   service: string;
   price: number;
-  distance: string;
+  distanceKm: number;
   address: string;
   paymentMethod: string;
   status: OrderStatus;
-  createdAt: string;
-  expiresAt: number; // timestamp
+  createdAtLabel: string;
+  expiresAt: number;
 }
 
-const now = Date.now();
-
-const MOCK_REQUESTS: ProRequest[] = [
-  {
-    id: '1',
-    customer: '山田 太郎',
-    service: '手洗い洗車',
-    price: 3000,
-    distance: '0.8km',
-    address: '東京都渋谷区神南1-2-3',
-    paymentMethod: 'オンライン決済',
-    status: 'requested',
-    createdAt: 'たった今',
-    expiresAt: now + MATCHING.ACCEPTANCE_TIMEOUT_SEC * 1000,
-  },
-  {
-    id: '2',
-    customer: '高橋 花子',
-    service: 'ガラスコーティング',
-    price: 15000,
-    distance: '1.5km',
-    address: '東京都港区六本木4-5-6',
-    paymentMethod: '現金決済',
-    status: 'requested',
-    createdAt: '2分前',
-    expiresAt: now + (MATCHING.ACCEPTANCE_TIMEOUT_SEC - 120) * 1000,
-  },
-  {
-    id: '3',
-    customer: '田中 一郎',
-    service: 'フルディテイルコース',
-    price: 25000,
-    distance: '3.2km',
-    address: '東京都世田谷区下北沢7-8-9',
-    paymentMethod: 'オンライン決済',
-    status: 'accepted',
-    createdAt: '15分前',
-    expiresAt: 0,
-  },
-];
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return 'たった今';
+  if (mins < 60) return `${mins}分前`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}時間前`;
+  return `${Math.round(hours / 24)}日前`;
+}
 
 function CountdownBadge({ expiresAt }: { expiresAt: number }) {
   const [remaining, setRemaining] = useState(
@@ -120,13 +94,99 @@ const countdownStyles = StyleSheet.create({
   textUrgent: { color: Colors.error },
 });
 
-export default function RequestsScreen() {
-  const [requests, setRequests] = useState(MOCK_REQUESTS);
+const ACTIVE_STATUSES: OrderStatus[] = [
+  'accepted',
+  'on_the_way',
+  'arrived',
+  'in_progress',
+  'pro_marked_done',
+];
 
-  const handleAccept = (id: string) => {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: 'accepted' as OrderStatus } : r))
-    );
+export default function RequestsScreen() {
+  const { user } = useAuth();
+  const [requests, setRequests] = useState<ProRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadRequests = useCallback(async () => {
+    if (!user?.id) return;
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
+        id, status, created_at, accepted_at, total_amount, customer_total,
+        address, distance_km, payment_method, pro_id,
+        customer:customer_id(full_name),
+        menus:order_menus(menu:menu_id(name))
+      `)
+      .or(`pro_id.eq.${user.id},status.in.(requested,requested_expanded)`)
+      .in('status', ['requested', 'requested_expanded', ...ACTIVE_STATUSES])
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error || !data) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    const mapped: ProRequest[] = data.map((row: any) => {
+      const firstMenu = row.menus?.[0]?.menu?.name ?? 'サービス';
+      const createdAt = row.created_at;
+      const expiresAt =
+        new Date(createdAt).getTime() + MATCHING.ACCEPTANCE_TIMEOUT_SEC * 1000;
+      return {
+        id: row.id,
+        customer: row.customer?.full_name ?? 'お客さま',
+        service: firstMenu,
+        price: row.customer_total ?? row.total_amount ?? 0,
+        distanceKm: row.distance_km ?? 0,
+        address: row.address ?? '',
+        paymentMethod:
+          row.payment_method === PAYMENT_METHOD.CASH ? '現金決済' : 'オンライン決済',
+        status: row.status as OrderStatus,
+        createdAtLabel: relativeTime(createdAt),
+        expiresAt,
+      };
+    });
+
+    setRequests(mapped);
+    setLoading(false);
+    setRefreshing(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadRequests();
+  }, [loadRequests]);
+
+  // Realtime subscription so pros see new requests without pulling to refresh
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`pro-requests-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          loadRequests();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, loadRequests]);
+
+  const handleAccept = async (id: string) => {
+    if (!user?.id) return;
+    const result = await updateOrderStatus(id, 'accepted', {
+      pro_id: user.id,
+      accepted_at: new Date().toISOString(),
+    });
+    if (!result.success) {
+      Alert.alert('エラー', result.error ?? '承認に失敗しました');
+      return;
+    }
+    loadRequests();
   };
 
   const handleDecline = (id: string) => {
@@ -135,15 +195,22 @@ export default function RequestsScreen() {
       {
         text: '辞退する',
         style: 'destructive',
-        onPress: () => setRequests((prev) => prev.filter((r) => r.id !== id)),
+        onPress: async () => {
+          // Remove from local state; server logs the pro ignored it.
+          // (Acceptance is optional — other pros can still take it.)
+          setRequests((prev) => prev.filter((r) => r.id !== id));
+        },
       },
     ]);
   };
 
-  const handleStartWork = (id: string) => {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: 'in_progress' as OrderStatus } : r))
-    );
+  const handleStartWork = async (id: string) => {
+    const result = await updateOrderStatus(id, 'in_progress');
+    if (!result.success) {
+      Alert.alert('エラー', result.error ?? '状態更新に失敗しました');
+      return;
+    }
+    loadRequests();
   };
 
   const handleMarkDone = (id: string) => {
@@ -154,25 +221,48 @@ export default function RequestsScreen() {
         { text: 'キャンセル', style: 'cancel' },
         {
           text: '完了報告を送信',
-          onPress: () =>
-            setRequests((prev) =>
-              prev.map((r) =>
-                r.id === id ? { ...r, status: 'pro_marked_done' as OrderStatus } : r
-              )
-            ),
+          onPress: async () => {
+            const result = await proMarkDone(id);
+            if (!result.success) {
+              Alert.alert('エラー', result.error ?? '完了報告に失敗しました');
+              return;
+            }
+            loadRequests();
+          },
         },
       ]
     );
   };
 
-  const pendingRequests = requests.filter((r) => r.status === 'requested' || r.status === 'requested_expanded');
-  const activeRequests = requests.filter((r) =>
-    ['accepted', 'on_the_way', 'arrived', 'in_progress', 'pro_marked_done'].includes(r.status)
+  const pendingRequests = requests.filter(
+    (r) => r.status === 'requested' || r.status === 'requested_expanded',
   );
+  const activeRequests = requests.filter((r) => ACTIVE_STATUSES.includes(r.status));
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadRequests();
+            }}
+          />
+        }
+      >
         <Text style={styles.title}>依頼管理</Text>
 
         {/* New Requests with countdown */}
@@ -213,7 +303,7 @@ export default function RequestsScreen() {
                   </View>
                   <View style={styles.detailRow}>
                     <Ionicons name="navigate-outline" size={16} color={Colors.textMuted} />
-                    <Text style={styles.detailText}>{req.distance}</Text>
+                    <Text style={styles.detailText}>{req.distanceKm.toFixed(1)}km</Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Ionicons name="card-outline" size={16} color={Colors.textMuted} />
@@ -257,7 +347,6 @@ export default function RequestsScreen() {
                     </View>
                   </View>
 
-                  {/* Action buttons based on status */}
                   {req.status === 'accepted' && (
                     <TouchableOpacity style={styles.actionBtn} onPress={() => handleStartWork(req.id)}>
                       <Ionicons name="play" size={18} color={Colors.white} />
@@ -284,7 +373,6 @@ export default function RequestsScreen() {
                     </View>
                   )}
 
-                  {/* Price */}
                   <View style={styles.priceRow}>
                     <Text style={styles.priceLabel}>{req.paymentMethod}</Text>
                     <Text style={styles.priceValue}>¥{req.price.toLocaleString()}</Text>
@@ -310,6 +398,7 @@ export default function RequestsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: FontSize.xxl, fontWeight: '800', color: Colors.textPrimary, marginBottom: Spacing.md },
   section: { marginBottom: Spacing.lg },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },

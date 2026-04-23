@@ -21,6 +21,7 @@ export default function CompleteScreen() {
   const { user } = useAuth();
   const params = useLocalSearchParams<{
     proName: string;
+    proId: string;
     totalPrice: string;
     orderId: string;
     autoCompleted: string;
@@ -55,6 +56,7 @@ export default function CompleteScreen() {
       params: {
         proName: params.proName,
         orderId: params.orderId,
+        proId: params.proId,
       },
     });
   };

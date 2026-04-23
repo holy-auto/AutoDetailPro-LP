@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { REVIEW, LOYALTY } from '@/constants/business-rules';
+import { logAudit } from './audit';
 
 // =============================================
 // レビュー（Reviews）— Submit, Query, Stats
@@ -20,9 +21,18 @@ type Review = {
   reviewer_id: string;
   target_id: string;
   rating: number;
+  punctuality_rating?: number | null;
+  technical_rating?: number | null;
+  courtesy_rating?: number | null;
   comment: string | null;
   tags: string[] | null;
   created_at: string;
+};
+
+export type SubReviewRatings = {
+  punctuality?: number;  // 1-5
+  technical?: number;    // 1-5
+  courtesy?: number;     // 1-5
 };
 
 type ReviewWithReviewer = Review & {
@@ -46,6 +56,7 @@ export async function submitReview(
   rating: number,
   comment?: string,
   tags?: string[],
+  subRatings?: SubReviewRatings,
 ): Promise<Result<Review>> {
   try {
     // Validate rating is an integer in the allowed range
@@ -54,6 +65,22 @@ export async function submitReview(
         success: false,
         error: `評価は${REVIEW.MIN_RATING}〜${REVIEW.MAX_RATING}の整数で指定してください`,
       };
+    }
+
+    // Validate sub-ratings when provided
+    const subDims: Array<[keyof SubReviewRatings, number | undefined]> = [
+      ['punctuality', subRatings?.punctuality],
+      ['technical', subRatings?.technical],
+      ['courtesy', subRatings?.courtesy],
+    ];
+    for (const [dim, v] of subDims) {
+      if (v === undefined) continue;
+      if (!Number.isInteger(v) || v < REVIEW.MIN_RATING || v > REVIEW.MAX_RATING) {
+        return {
+          success: false,
+          error: `${dim} の評価は${REVIEW.MIN_RATING}〜${REVIEW.MAX_RATING}の整数で指定してください`,
+        };
+      }
     }
 
     // Validate comment length
@@ -78,6 +105,9 @@ export async function submitReview(
         reviewer_id: reviewerId,
         target_id: targetId,
         rating,
+        punctuality_rating: subRatings?.punctuality ?? null,
+        technical_rating: subRatings?.technical ?? null,
+        courtesy_rating: subRatings?.courtesy ?? null,
         comment: comment ?? null,
         tags: tags ?? null,
       })
@@ -140,6 +170,21 @@ export async function submitReview(
       title: '新しいレビューが届きました',
       body: `${rating}つ星のレビューをいただきました。${safeComment ? `「${safeComment}${(comment?.length ?? 0) > 50 ? '...' : ''}」` : ''}`,
       data: { review_id: review.id, order_id: orderId, rating },
+    });
+
+    await logAudit({
+      action: 'review.submit',
+      resourceType: 'review',
+      resourceId: review.id,
+      metadata: {
+        order_id: orderId,
+        rating,
+        has_sub_ratings: !!(
+          subRatings?.punctuality ||
+          subRatings?.technical ||
+          subRatings?.courtesy
+        ),
+      },
     });
 
     return { success: true, data: review as Review };

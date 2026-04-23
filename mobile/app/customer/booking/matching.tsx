@@ -24,8 +24,8 @@ export default function MatchingScreen() {
   }>();
 
   const [status, setStatus] = useState<'searching' | 'expanded' | 'accepted' | 'no_match'>('searching');
-  const [countdown, setCountdown] = useState(MATCHING.ACCEPTANCE_TIMEOUT_SEC);
-  const [radius, setRadius] = useState(MATCHING.BASE_RADIUS_KM);
+  const [countdown, setCountdown] = useState<number>(MATCHING.ACCEPTANCE_TIMEOUT_SEC);
+  const [radius, setRadius] = useState<number>(MATCHING.BASE_RADIUS_KM);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Pulse animation

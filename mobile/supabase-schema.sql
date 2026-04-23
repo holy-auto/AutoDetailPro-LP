@@ -236,7 +236,12 @@ CREATE TABLE reviews (
   order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   reviewer_id UUID NOT NULL REFERENCES profiles(id),
   target_id UUID NOT NULL REFERENCES profiles(id),
+  -- Overall rating (kept for backwards compat + ranking score)
   rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  -- Multi-dimensional sub-scores (optional — NULL when reviewer skipped)
+  punctuality_rating INT CHECK (punctuality_rating BETWEEN 1 AND 5),
+  technical_rating INT CHECK (technical_rating BETWEEN 1 AND 5),
+  courtesy_rating INT CHECK (courtesy_rating BETWEEN 1 AND 5),
   comment TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(order_id, reviewer_id)

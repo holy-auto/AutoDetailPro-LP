@@ -116,7 +116,9 @@ export default function TrackingScreen() {
         800
       );
     });
-    return () => sub.unsubscribe();
+    return () => {
+      sub.unsubscribe();
+    };
   }, [params.proId]);
 
   // Simulate pro movement (demo fallback when no real proId)

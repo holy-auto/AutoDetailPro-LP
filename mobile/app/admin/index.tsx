@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -5,72 +6,50 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
+import { supabase } from '@/lib/supabase';
 
 const today = new Date();
 const formattedDate = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
 
-const STAT_CARDS = [
-  {
-    label: '本日の注文数',
-    value: '24',
-    icon: 'receipt' as const,
-    color: Colors.primaryMedium,
-    bg: Colors.primaryFaint,
-  },
-  {
-    label: '売上',
-    value: '¥387,200',
-    icon: 'trending-up' as const,
-    color: Colors.success,
-    bg: Colors.success + '15',
-  },
-  {
-    label: 'アクティブプロ',
-    value: '18',
-    icon: 'people' as const,
-    color: Colors.warning,
-    bg: Colors.warning + '15',
-  },
-  {
-    label: '新規登録',
-    value: '5',
-    icon: 'person-add' as const,
-    color: Colors.info,
-    bg: Colors.info + '15',
-  },
-];
+type DashboardStats = {
+  ordersToday: number;
+  revenueToday: number;
+  activePros: number;
+  newSignupsToday: number;
+};
 
-const ACTION_ITEMS = [
-  {
-    label: 'KYC審査待ち',
-    count: 7,
-    icon: 'shield-checkmark' as const,
-    color: Colors.warning,
-  },
-  {
-    label: 'フラグ付きチャット',
-    count: 3,
-    icon: 'flag' as const,
-    color: Colors.error,
-  },
-  {
-    label: '改善プラン対象',
-    count: 2,
-    icon: 'alert-circle' as const,
-    color: '#F59E0B',
-  },
-  {
-    label: 'クレーム対応中',
-    count: 1,
-    icon: 'warning' as const,
-    color: Colors.error,
-  },
-];
+type ActionCounts = {
+  kycPending: number;
+  flaggedChats: number;
+  improvementPlans: number;
+  openDisputes: number;
+};
 
-const RECENT_ORDERS = [
+type RecentOrder = {
+  id: string;
+  customer: string;
+  pro: string;
+  service: string;
+  amount: number;
+  status: string;
+  time: string;
+};
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return 'たった今';
+  if (mins < 60) return `${mins}分前`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}時間前`;
+  return `${Math.round(hours / 24)}日前`;
+}
+
+const FALLBACK_RECENT: RecentOrder[] = [
   {
     id: '1',
     customer: '山田 太郎',
@@ -128,6 +107,177 @@ const STATUS_LABELS: Record<string, { text: string; color: string; bg: string }>
 };
 
 export default function AdminDashboard() {
+  const [stats, setStats] = useState<DashboardStats>({
+    ordersToday: 0,
+    revenueToday: 0,
+    activePros: 0,
+    newSignupsToday: 0,
+  });
+  const [actions, setActions] = useState<ActionCounts>({
+    kycPending: 0,
+    flaggedChats: 0,
+    improvementPlans: 0,
+    openDisputes: 0,
+  });
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayIso = todayStart.toISOString();
+
+      const [
+        ordersTodayRes,
+        activeProsRes,
+        newSignupsRes,
+        kycRes,
+        improvementRes,
+        disputesRes,
+        recentOrdersRes,
+      ] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('id, customer_total, total_amount', { count: 'exact' })
+          .gte('created_at', todayIso),
+        supabase
+          .from('pro_profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('is_online', true)
+          .eq('suspended', false),
+        supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', todayIso),
+        supabase
+          .from('kyc_verifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending'),
+        supabase
+          .from('improvement_plans')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'active'),
+        supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .in('status', ['dispute_opened', 'disputed']),
+        supabase
+          .from('orders')
+          .select(`
+            id, status, created_at, total_amount, customer_total,
+            customer:customer_id(full_name),
+            pro:pro_id(full_name),
+            menus:order_menus(menu:menu_id(name))
+          `)
+          .order('created_at', { ascending: false })
+          .limit(5),
+      ]);
+
+      const revenueToday = (ordersTodayRes.data ?? []).reduce(
+        (sum: number, row: any) =>
+          sum + (row.customer_total ?? row.total_amount ?? 0),
+        0,
+      );
+
+      setStats({
+        ordersToday: ordersTodayRes.count ?? 0,
+        revenueToday,
+        activePros: activeProsRes.count ?? 0,
+        newSignupsToday: newSignupsRes.count ?? 0,
+      });
+
+      setActions({
+        kycPending: kycRes.count ?? 0,
+        flaggedChats: 0, // chat moderation table not yet wired
+        improvementPlans: improvementRes.count ?? 0,
+        openDisputes: disputesRes.count ?? 0,
+      });
+
+      const orders: RecentOrder[] = (recentOrdersRes.data ?? []).map(
+        (row: any) => ({
+          id: row.id,
+          customer: row.customer?.full_name ?? 'お客さま',
+          pro: row.pro?.full_name ?? '未アサイン',
+          service: row.menus?.[0]?.menu?.name ?? 'サービス',
+          amount: row.customer_total ?? row.total_amount ?? 0,
+          status: row.status,
+          time: relativeTime(row.created_at),
+        }),
+      );
+      setRecentOrders(orders.length > 0 ? orders : FALLBACK_RECENT);
+      setLoading(false);
+    })();
+  }, []);
+
+  const statCards = [
+    {
+      label: '本日の注文数',
+      value: String(stats.ordersToday),
+      icon: 'receipt' as const,
+      color: Colors.primaryMedium,
+      bg: Colors.primaryFaint,
+    },
+    {
+      label: '本日の売上',
+      value: `¥${stats.revenueToday.toLocaleString()}`,
+      icon: 'trending-up' as const,
+      color: Colors.success,
+      bg: Colors.success + '15',
+    },
+    {
+      label: 'アクティブプロ',
+      value: String(stats.activePros),
+      icon: 'people' as const,
+      color: Colors.warning,
+      bg: Colors.warning + '15',
+    },
+    {
+      label: '本日の新規登録',
+      value: String(stats.newSignupsToday),
+      icon: 'person-add' as const,
+      color: Colors.info,
+      bg: Colors.info + '15',
+    },
+  ];
+
+  const actionItems = [
+    {
+      label: 'KYC審査待ち',
+      count: actions.kycPending,
+      icon: 'shield-checkmark' as const,
+      color: Colors.warning,
+    },
+    {
+      label: 'フラグ付きチャット',
+      count: actions.flaggedChats,
+      icon: 'flag' as const,
+      color: Colors.error,
+    },
+    {
+      label: '改善プラン対象',
+      count: actions.improvementPlans,
+      icon: 'alert-circle' as const,
+      color: '#F59E0B',
+    },
+    {
+      label: 'クレーム対応中',
+      count: actions.openDisputes,
+      icon: 'warning' as const,
+      color: Colors.error,
+    },
+  ];
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -145,7 +295,7 @@ export default function AdminDashboard() {
 
         {/* Stat Cards Row */}
         <View style={styles.statGrid}>
-          {STAT_CARDS.map((card, idx) => (
+          {statCards.map((card, idx) => (
             <View key={idx} style={styles.statCard}>
               <View style={[styles.statIconWrap, { backgroundColor: card.bg }]}>
                 <Ionicons name={card.icon} size={18} color={card.color} />
@@ -160,7 +310,7 @@ export default function AdminDashboard() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>要対応アイテム</Text>
           <View style={styles.actionGrid}>
-            {ACTION_ITEMS.map((item, idx) => (
+            {actionItems.map((item, idx) => (
               <TouchableOpacity key={idx} style={styles.actionCard}>
                 <View style={styles.actionCardTop}>
                   <Ionicons name={item.icon} size={20} color={item.color} />
@@ -183,7 +333,7 @@ export default function AdminDashboard() {
             </TouchableOpacity>
           </View>
 
-          {RECENT_ORDERS.map((order) => {
+          {recentOrders.map((order) => {
             const status = STATUS_LABELS[order.status] ?? STATUS_LABELS.completed;
             return (
               <View key={order.id} style={styles.orderCard}>
