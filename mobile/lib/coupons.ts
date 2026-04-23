@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logAudit } from './audit';
 
 export type CouponSource = 'rewarded_ad' | 'audit_reward' | 'referral' | 'gift';
 
@@ -44,6 +45,18 @@ export async function saveCoupon(params: {
     });
 
   if (assignError) return null;
+
+  await logAudit({
+    action: 'coupon.issue',
+    resourceType: 'coupon',
+    resourceId: coupon.id,
+    metadata: {
+      code,
+      source: params.source,
+      type,
+      value: params.amount,
+    },
+  });
 
   return { couponId: coupon.id, code };
 }

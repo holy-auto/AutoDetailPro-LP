@@ -1200,3 +1200,59 @@ BEGIN
   UPDATE ads SET status = 'expired', updated_at = NOW() WHERE status = 'active' AND expires_at < NOW();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- 40. Audit Logs (変更履歴・コンプライアンス)
+-- ============================================
+CREATE TABLE audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  actor_role TEXT,
+  action TEXT NOT NULL,              -- e.g. 'order.cancel', 'boost.activate', 'payment.capture'
+  resource_type TEXT,                -- e.g. 'order', 'boost_purchase', 'profile'
+  resource_id TEXT,
+  metadata JSONB,
+  ip_address INET,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own audit logs" ON audit_logs FOR SELECT USING (auth.uid() = actor_id);
+CREATE POLICY "Admins can view all audit logs" ON audit_logs FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+CREATE POLICY "Authenticated users can insert own audit logs" ON audit_logs FOR INSERT
+  WITH CHECK (auth.uid() = actor_id);
+
+CREATE INDEX idx_audit_logs_actor ON audit_logs (actor_id, created_at DESC);
+CREATE INDEX idx_audit_logs_resource ON audit_logs (resource_type, resource_id);
+CREATE INDEX idx_audit_logs_action ON audit_logs (action, created_at DESC);
+
+-- ============================================
+-- 41. Feature Flags (段階的ロールアウト・緊急停止)
+-- ============================================
+CREATE TABLE feature_flags (
+  key TEXT PRIMARY KEY,
+  enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  rollout_percent INT NOT NULL DEFAULT 0 CHECK (rollout_percent BETWEEN 0 AND 100),
+  target_roles TEXT[] DEFAULT '{}',
+  description TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_by UUID REFERENCES profiles(id) ON DELETE SET NULL
+);
+
+ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone authenticated can read flags" ON feature_flags FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Admins can manage flags" ON feature_flags FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- Seed a few initial flags (disabled by default — enable from admin UI)
+INSERT INTO feature_flags (key, description) VALUES
+  ('enable_boost_purchase',         'プロのブースト購入機能'),
+  ('enable_rewarded_ad_coupon',     'リワード広告でクーポン獲得'),
+  ('enable_auto_completion',        '30分自動完了機能'),
+  ('enable_multi_dimensional_review', '多次元レビュー (時間厳守/技術/丁寧さ)'),
+  ('emergency_price_cap',           '災害時の料金キャップ (true時は boost 購入停止)')
+ON CONFLICT (key) DO NOTHING;

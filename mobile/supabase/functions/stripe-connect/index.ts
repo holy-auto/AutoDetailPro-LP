@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
       const {
         order_id, amount, base_amount, customer_fee,
         currency = 'jpy', customer_id, capture_method = 'manual',
+        idempotency_key,
       } = body;
 
       if (!order_id || !amount) {
@@ -153,18 +154,21 @@ Deno.serve(async (req) => {
         return errorResponse('amount must be a positive integer (1–10,000,000)');
       }
 
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount,
-        currency,
-        capture_method,
-        metadata: {
-          order_id,
-          customer_id: customer_id ?? '',
-          platform: 'mobile_wash',
-          base_amount: String(base_amount ?? amount),
-          customer_fee: String(customer_fee ?? 0),
+      const paymentIntent = await stripe.paymentIntents.create(
+        {
+          amount,
+          currency,
+          capture_method,
+          metadata: {
+            order_id,
+            customer_id: customer_id ?? '',
+            platform: 'mobile_wash',
+            base_amount: String(base_amount ?? amount),
+            customer_fee: String(customer_fee ?? 0),
+          },
         },
-      });
+        idempotency_key ? { idempotencyKey: idempotency_key } : undefined,
+      );
 
       // Save PI ID and fee breakdown to the order
       await supabase
@@ -358,7 +362,7 @@ Deno.serve(async (req) => {
     // amount = plan price (confirmed by client via PaymentSheet)
     // -----------------------------------------------------------------------
     if (action === 'create_boost_payment_intent') {
-      const { pro_id, plan_id, amount, customer_email } = body;
+      const { pro_id, plan_id, amount, customer_email, idempotency_key } = body;
 
       if (!pro_id || !plan_id || !amount) {
         return errorResponse('pro_id, plan_id and amount are required');
@@ -403,18 +407,21 @@ Deno.serve(async (req) => {
           )
         : null;
 
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount,
-        currency: 'jpy',
-        capture_method: 'automatic',
-        customer: stripeCustomerId,
-        metadata: {
-          purpose: 'boost_purchase',
-          pro_id,
-          plan_id,
-          platform: 'mobile_wash',
+      const paymentIntent = await stripe.paymentIntents.create(
+        {
+          amount,
+          currency: 'jpy',
+          capture_method: 'automatic',
+          customer: stripeCustomerId,
+          metadata: {
+            purpose: 'boost_purchase',
+            pro_id,
+            plan_id,
+            platform: 'mobile_wash',
+          },
         },
-      });
+        idempotency_key ? { idempotencyKey: idempotency_key } : undefined,
+      );
 
       return jsonResponse({
         payment_intent_id: paymentIntent.id,

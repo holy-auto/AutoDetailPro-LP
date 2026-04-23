@@ -12,7 +12,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import MapView, { Marker, Circle } from 'react-native-maps';
+import { MapView, Marker, Circle, type MapViewHandle } from '@/components/map';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
@@ -109,7 +109,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 export default function CustomerHome() {
   const router = useRouter();
   const { user, isGuest, requireAuth } = useAuth();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapViewHandle>(null);
   const userName = isGuest
     ? 'ゲスト'
     : user?.user_metadata?.full_name ||
@@ -252,7 +252,6 @@ export default function CustomerHome() {
             <MapView
               ref={mapRef}
               style={styles.map}
-              provider={undefined}
               initialRegion={{
                 ...userLocation,
                 latitudeDelta: 0.025,

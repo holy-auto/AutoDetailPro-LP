@@ -15,6 +15,7 @@ import { PRO_BOOST, type BoostPlanId } from '@/constants/business-rules';
 import { useAuth } from '../_layout';
 import { supabase } from '@/lib/supabase';
 import { createBoostPaymentIntent, activateBoost } from '@/lib/boost';
+import { isFlagEnabled } from '@/lib/flags';
 
 export default function BoostScreen() {
   const { user } = useAuth();
@@ -58,6 +59,17 @@ export default function BoostScreen() {
           onPress: async () => {
             setPurchasing(true);
             try {
+              // Emergency kill-switch: admin can globally disable boost purchases
+              // (e.g. during disaster / price-cap incidents) via feature flags.
+              const emergencyCap = await isFlagEnabled('emergency_price_cap');
+              if (emergencyCap) {
+                Alert.alert(
+                  '一時停止中',
+                  '現在ブースト購入を一時停止しています。しばらくしてから再度お試しください。',
+                );
+                return;
+              }
+
               const {
                 clientSecret,
                 paymentIntentId,

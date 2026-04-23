@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logAudit } from './audit';
 import {
   BUSINESS_HOURS,
   PRO_RANKING,
@@ -94,6 +95,13 @@ export async function toggleProOnline(
   if (error) {
     return { success: false, error: error.message };
   }
+
+  await logAudit({
+    action: online ? 'pro.online' : 'pro.offline',
+    resourceType: 'pro_profile',
+    resourceId: proId,
+    metadata: coords ? { latitude: coords.latitude, longitude: coords.longitude } : undefined,
+  });
 
   return { success: true, data };
 }

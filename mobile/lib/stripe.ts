@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logAudit } from './audit';
 import {
   CANCELLATION,
   PAYMENT_METHOD,
@@ -79,10 +80,23 @@ export async function createPaymentIntent(params: {
       currency: 'jpy',
       customer_email: params.customerEmail,
       capture_method: 'manual',
+      // Stable idempotency — retrying the same order must not double-charge
+      idempotency_key: `pi:order:${params.orderId}`,
     },
   });
 
   if (error) throw new Error(`Payment creation failed: ${error.message}`);
+
+  await logAudit({
+    action: 'payment.create_intent',
+    resourceType: 'order',
+    resourceId: params.orderId,
+    metadata: {
+      payment_intent_id: data.payment_intent_id,
+      amount: customerTotal,
+      base_amount: params.amount,
+    },
+  });
 
   return {
     paymentIntentId: data.payment_intent_id as string,
@@ -110,6 +124,16 @@ export async function capturePayment(params: {
   });
 
   if (error) throw new Error(`Payment capture failed: ${error.message}`);
+
+  await logAudit({
+    action: 'payment.capture',
+    resourceType: 'order',
+    resourceId: params.orderId,
+    metadata: {
+      payment_intent_id: params.paymentIntentId,
+      amount: params.amount ?? null,
+    },
+  });
   return data;
 }
 
@@ -130,6 +154,13 @@ export async function cancelPaymentAuthorization(params: {
   });
 
   if (error) throw new Error(`Payment cancel failed: ${error.message}`);
+
+  await logAudit({
+    action: 'payment.cancel_intent',
+    resourceType: 'order',
+    resourceId: params.orderId,
+    metadata: { payment_intent_id: params.paymentIntentId },
+  });
   return data;
 }
 
@@ -228,6 +259,18 @@ export async function processRefund(params: {
     refund_amount: refundAmount,
     refund_reason: params.reason,
   }).eq('id', params.orderId);
+
+  await logAudit({
+    action: 'payment.refund',
+    resourceType: 'order',
+    resourceId: params.orderId,
+    metadata: {
+      payment_intent_id: params.paymentIntentId,
+      refund_amount: refundAmount,
+      refund_percent: params.refundPercent,
+      reason: params.reason,
+    },
+  });
 
   return { refundAmount, status: newStatus, ...data };
 }
