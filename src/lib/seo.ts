@@ -120,13 +120,6 @@ export function serviceLd(): StructuredData {
         },
       ],
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.8",
-      reviewCount: "10000",
-      bestRating: "5",
-      worstRating: "1",
-    },
   };
 }
 
@@ -144,13 +137,9 @@ export function mobileApplicationLd(): StructuredData {
       price: "0",
       priceCurrency: "JPY",
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.8",
-      reviewCount: "10000",
-      bestRating: "5",
-      worstRating: "1",
-    },
+    softwareVersion: "1.0.0",
+    releaseNotes:
+      "正式ローンチ準備中。先行登録者にはリリース時にお知らせします。",
   };
 }
 

@@ -5,7 +5,7 @@ const benefits = [
   },
   {
     title: "業界最高水準の還元率",
-    description: "プラットフォーム手数料は最小限。月収50万円以上の認定プロも多数活躍中。",
+    description: "プラットフォーム手数料は最小限の10%。施工料金の90%が直接プロの収益になります。",
   },
   {
     title: "集客・決済はアプリにお任せ",
@@ -82,16 +82,16 @@ export default function ProRecruit() {
             <div className="lg:col-span-5">
               <div className="bg-white rounded-2xl p-7 lg:p-8 text-[#0a2540] soft-shadow-lg">
                 <p className="text-[10px] font-bold tracking-[0.25em] text-[#0099e6] uppercase mb-2">
-                  Example Income
+                  Example Income (Simulation)
                 </p>
                 <p className="text-sm font-bold mb-3 text-[#5a7090]">
-                  認定プロの月収シミュレーション
+                  月収シミュレーション
                 </p>
                 <p className="heading-tight text-5xl lg:text-6xl font-bold mb-2 text-[#0a2540]">
                   ¥520,000
                 </p>
                 <p className="text-[11px] text-[#8ba0ba] mb-6">
-                  ※ 週4日 / 1日3件稼働 / 平均単価12,000円の場合
+                  ※ 想定モデル：週4日 / 1日3件 / 単価12,000円。実績ではなく試算例です。
                 </p>
                 <dl className="space-y-2.5 text-[13px] border-t border-[#e4eef7] pt-5">
                   <div className="flex justify-between">

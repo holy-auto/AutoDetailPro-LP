@@ -1,70 +1,98 @@
-const media = [
-  { name: "日経クロストレンド", type: "ビジネスメディア" },
-  { name: "Forbes JAPAN", type: "ビジネスメディア" },
-  { name: "ITmedia", type: "ITメディア" },
-  { name: "TechCrunch JP", type: "スタートアップメディア" },
-  { name: "GoodsPress", type: "カーライフ誌" },
-  { name: "GQ JAPAN", type: "ライフスタイル誌" },
-  { name: "FNN PRIME", type: "ニュースメディア" },
-  { name: "Yahoo!ニュース", type: "総合メディア" },
-];
-
-const awards = [
-  { year: "2026", title: "JCD Best App Award", category: "モビリティ部門 入賞" },
-  { year: "2026", title: "Good Design Award", category: "サービスデザイン 受賞" },
-  { year: "2025", title: "ITreview Grid Award", category: "Leader 認定" },
-];
-
 export default function Media() {
   return (
     <section
-      aria-label="メディア掲載・受賞歴"
+      aria-label="メディア掲載・取材依頼"
       className="py-16 sm:py-20 bg-[#f7fbff] border-y border-[#e4eef7]"
     >
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
-        <div className="grid lg:grid-cols-12 gap-10 items-center">
-          <div className="lg:col-span-4">
-            <p className="section-label mb-3 inline-flex">Media &amp; Awards</p>
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+          <div className="lg:col-span-5">
+            <p className="section-label mb-3 inline-flex">Press &amp; Media</p>
             <h2 className="text-2xl sm:text-3xl font-bold text-[#0a2540] mb-3">
-              さまざまなメディアで
-              <br />
-              ご紹介いただいています
+              取材・掲載のお問い合わせ
             </h2>
             <p className="text-[14px] text-[#5a7090] leading-relaxed">
-              出張カーディテイリングの新しいスタンダードとして、
-              ビジネス・ITメディア・カーライフ誌など多方面から注目をいただいています。
+              MobileWash は2026年Q3の正式ローンチに向けて準備中です。
+              取材・記事掲載・出演依頼については、広報担当までお気軽にご連絡ください。
+              ロゴ・サービス画像などのプレス素材もご用意しています。
             </p>
           </div>
 
-          <div className="lg:col-span-8">
-            <ul className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
-              {media.map((m) => (
-                <li
-                  key={m.name}
-                  className="bg-white border border-[#e4eef7] rounded-xl p-4 text-center"
-                >
-                  <p className="text-[13px] font-bold text-[#0a2540]">{m.name}</p>
-                  <p className="text-[10px] text-[#8ba0ba] mt-0.5">{m.type}</p>
-                </li>
-              ))}
-            </ul>
-
-            <ul className="flex flex-wrap gap-2">
-              {awards.map((a) => (
-                <li
-                  key={a.title}
-                  className="bg-white border border-[#0099e6]/20 rounded-full pl-1.5 pr-3 py-1.5 flex items-center gap-2"
-                >
-                  <span className="text-[10px] font-bold bg-[#0099e6] text-white px-2 py-0.5 rounded-full">
-                    {a.year}
-                  </span>
-                  <span className="text-[12px] font-bold text-[#0a2540]">
-                    {a.title}
-                  </span>
-                  <span className="text-[11px] text-[#5a7090]">{a.category}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="lg:col-span-7">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <a
+                href="#"
+                className="soft-card bg-white p-5 flex items-start gap-3 hover:border-[#cfdfee]"
+              >
+                <span className="shrink-0 w-10 h-10 bg-[#e6f4ff] text-[#0099e6] rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-[13px] font-bold text-[#0a2540] mb-0.5">
+                    広報・取材のお問い合わせ
+                  </p>
+                  <p className="text-[12px] text-[#5a7090]">
+                    取材・掲載・出演に関するご相談
+                  </p>
+                </div>
+              </a>
+              <a
+                href="#"
+                className="soft-card bg-white p-5 flex items-start gap-3 hover:border-[#cfdfee]"
+              >
+                <span className="shrink-0 w-10 h-10 bg-[#e6fbf7] text-[#0a8f7c] rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-[13px] font-bold text-[#0a2540] mb-0.5">
+                    プレス素材ダウンロード
+                  </p>
+                  <p className="text-[12px] text-[#5a7090]">
+                    ロゴ・サービス画像・会社概要
+                  </p>
+                </div>
+              </a>
+              <a
+                href="#"
+                className="soft-card bg-white p-5 flex items-start gap-3 hover:border-[#cfdfee]"
+              >
+                <span className="shrink-0 w-10 h-10 bg-[#fff4e6] text-[#b36b00] rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-[13px] font-bold text-[#0a2540] mb-0.5">
+                    プレスリリース一覧
+                  </p>
+                  <p className="text-[12px] text-[#5a7090]">
+                    最新のお知らせ・発表
+                  </p>
+                </div>
+              </a>
+              <a
+                href="#"
+                className="soft-card bg-white p-5 flex items-start gap-3 hover:border-[#cfdfee]"
+              >
+                <span className="shrink-0 w-10 h-10 bg-[#f0e6ff] text-[#6b46c1] rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-[13px] font-bold text-[#0a2540] mb-0.5">
+                    ブランド・利用ガイド
+                  </p>
+                  <p className="text-[12px] text-[#5a7090]">
+                    ブランドガイドラインと使用例
+                  </p>
+                </div>
+              </a>
+            </div>
           </div>
         </div>
       </div>

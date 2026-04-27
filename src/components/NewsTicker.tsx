@@ -1,14 +1,24 @@
 const news = [
-  { date: "2026.04.21", tag: "プレス", text: "シリーズA資金調達を実施。全国47都道府県への展開を加速します。" },
-  { date: "2026.04.10", tag: "サービス", text: "出張ガラスコーティングの新メニューをリリースしました。" },
-  { date: "2026.03.18", tag: "メディア", text: "「日経クロストレンド」にてサービスが紹介されました。" },
-  { date: "2026.03.05", tag: "お知らせ", text: "対応エリアに名古屋市・京都市を追加しました。" },
+  {
+    date: "2026.04.21",
+    tag: "プレス",
+    text: "MobileWashのコーポレートサイト・先行登録ページを公開しました。",
+  },
+  {
+    date: "2026.04.10",
+    tag: "募集",
+    text: "認定プロ第一期生の登録を開始しました。経験者・未経験者ともに歓迎です。",
+  },
+  {
+    date: "2026.03.18",
+    tag: "お知らせ",
+    text: "正式ローンチを2026年Q3に予定しています。先行登録は本日より受付中。",
+  },
 ];
 
 const tagColor: Record<string, string> = {
   プレス: "bg-[#e6f4ff] text-[#0077b3]",
-  サービス: "bg-[#e6fbf7] text-[#0a8f7c]",
-  メディア: "bg-[#fff4e6] text-[#b36b00]",
+  募集: "bg-[#e6fbf7] text-[#0a8f7c]",
   お知らせ: "bg-[#f0f0f5] text-[#4a5568]",
 };
 
@@ -36,7 +46,10 @@ export default function NewsTicker() {
               >
                 {news[0].tag}
               </span>
-              <a href="#" className="text-[#1a3658] hover:text-[#0099e6] transition-colors truncate">
+              <a
+                href="#"
+                className="text-[#1a3658] hover:text-[#0099e6] transition-colors truncate"
+              >
                 {news[0].text}
               </a>
             </li>
@@ -46,7 +59,14 @@ export default function NewsTicker() {
             className="text-[12px] text-[#0099e6] font-bold hover:underline shrink-0 inline-flex items-center gap-1"
           >
             お知らせ一覧
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+            <svg
+              className="w-3 h-3"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              aria-hidden="true"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </a>

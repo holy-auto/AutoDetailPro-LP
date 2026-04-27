@@ -1,4 +1,11 @@
-export default function Hero() {
+import LiveCounter from "@/components/LiveCounter";
+import { getSiteStats } from "@/lib/stats";
+
+export const revalidate = 120;
+
+export default async function Hero() {
+  const stats = await getSiteStats();
+
   return (
     <section
       aria-labelledby="hero-heading"
@@ -13,7 +20,7 @@ export default function Hero() {
           <div className="lg:col-span-6">
             <span className="tag-pill mb-6">
               <span className="w-1.5 h-1.5 bg-[#0099e6] rounded-full" />
-              出張カーディテイリング No.1 アプリ
+              {stats.launchTarget} 正式ローンチ予定 / 先行登録受付中
             </span>
             <h1
               id="hero-heading"
@@ -26,13 +33,13 @@ export default function Hero() {
             </h1>
             <p className="text-[15px] sm:text-base lg:text-lg text-[#5a7090] leading-relaxed mb-10 max-w-xl">
               出張洗車・出張コーティングのプロを、スマホひとつで呼べるアプリ。
-              GPSで近くの認定プロを自動マッチング、最短5分で駐車場まで出張。
-              洗車・コーティング・内装クリーニングが、もっと気軽になります。
+              GPSで近くの認定プロを自動マッチング。最短5分で駐車場まで出張。
+              現在、認定プロ募集中・先行ユーザー登録を受け付けています。
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 mb-10">
               <a href="#cta" className="btn-primary text-[15px] px-7">
-                アプリを無料ダウンロード
+                先行登録する
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
@@ -44,29 +51,33 @@ export default function Hero() {
 
             <dl className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-7 border-t border-[#e4eef7]">
               <div>
-                <dt className="text-[11px] text-[#8ba0ba] font-bold tracking-widest mb-1">
-                  累計予約数
+                <dt className="text-[11px] text-[#8ba0ba] font-bold tracking-widest mb-1 inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-[#0a8f7c] rounded-full animate-pulse" />
+                  事前登録者数
                 </dt>
-                <dd className="text-2xl lg:text-[28px] font-bold text-[#0a2540] leading-none">
-                  10,000<span className="text-sm text-[#0099e6] ml-0.5">+</span>
+                <dd className="text-2xl lg:text-[28px] font-bold text-[#0a2540] leading-none tabular-nums">
+                  <LiveCounter target={stats.waitlist} />
+                  <span className="text-sm text-[#0099e6] ml-1 font-bold">名</span>
+                </dd>
+              </div>
+              <div className="w-px h-9 bg-[#e4eef7]" />
+              <div>
+                <dt className="text-[11px] text-[#8ba0ba] font-bold tracking-widest mb-1 inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-[#0a8f7c] rounded-full animate-pulse" />
+                  認定プロ登録数
+                </dt>
+                <dd className="text-2xl lg:text-[28px] font-bold text-[#0a2540] leading-none tabular-nums">
+                  <LiveCounter target={stats.pros} />
+                  <span className="text-sm text-[#0099e6] ml-1 font-bold">名</span>
                 </dd>
               </div>
               <div className="w-px h-9 bg-[#e4eef7]" />
               <div>
                 <dt className="text-[11px] text-[#8ba0ba] font-bold tracking-widest mb-1">
-                  平均満足度
+                  ローンチ予定
                 </dt>
                 <dd className="text-2xl lg:text-[28px] font-bold text-[#0a2540] leading-none">
-                  4.8<span className="text-sm text-[#0099e6] ml-0.5">★</span>
-                </dd>
-              </div>
-              <div className="w-px h-9 bg-[#e4eef7]" />
-              <div>
-                <dt className="text-[11px] text-[#8ba0ba] font-bold tracking-widest mb-1">
-                  最短到着
-                </dt>
-                <dd className="text-2xl lg:text-[28px] font-bold text-[#0a2540] leading-none">
-                  5<span className="text-sm text-[#0099e6] ml-0.5">分〜</span>
+                  {stats.launchTarget}
                 </dd>
               </div>
             </dl>
@@ -83,14 +94,14 @@ export default function Hero() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[10px] text-[#8ba0ba] font-bold leading-tight">プロが向かっています</p>
-                    <p className="text-[13px] font-bold text-[#0a2540] leading-tight mt-0.5">あと約5分</p>
+                    <p className="text-[10px] text-[#8ba0ba] font-bold leading-tight">プロが向かいます（イメージ）</p>
+                    <p className="text-[13px] font-bold text-[#0a2540] leading-tight mt-0.5">最短5分で出張</p>
                   </div>
                 </div>
               </div>
 
               <div className="absolute -bottom-4 -right-4 bg-white soft-shadow-lg rounded-2xl px-4 py-3 z-20 hidden sm:block">
-                <p className="text-[10px] text-[#8ba0ba] font-bold leading-tight">初回ご利用</p>
+                <p className="text-[10px] text-[#8ba0ba] font-bold leading-tight">先行登録特典</p>
                 <p className="text-base font-bold text-[#0099e6] leading-tight mt-0.5">¥1,000 OFF</p>
               </div>
 
@@ -103,10 +114,13 @@ export default function Hero() {
                       </svg>
                     </div>
                     <span className="text-[#0a2540] font-bold text-[13px]">MobileWash</span>
+                    <span className="ml-auto text-[9px] font-bold text-[#0a8f7c] bg-[#e6fbf7] px-1.5 py-0.5 rounded-full">
+                      β
+                    </span>
                   </div>
 
                   <div className="px-4 pt-4 pb-3 bg-gradient-to-b from-[#f0f9ff] to-white">
-                    <p className="text-[11px] text-[#8ba0ba] font-bold mb-1">こんにちは、田中さん</p>
+                    <p className="text-[11px] text-[#8ba0ba] font-bold mb-1">画面イメージ</p>
                     <p className="text-[#0a2540] font-bold text-base leading-tight">
                       今日も愛車を、
                       <br />
@@ -137,10 +151,12 @@ export default function Hero() {
                       </div>
                     </div>
 
-                    <p className="text-[10px] text-[#8ba0ba] mb-2 font-bold">近くの出張プロ</p>
+                    <p className="text-[10px] text-[#8ba0ba] mb-2 font-bold">
+                      近くの出張プロ <span className="text-[#0a8f7c]">（β版イメージ）</span>
+                    </p>
                     {[
-                      { name: "田中 健太", rating: "4.9", time: "5分", reviews: "342" },
-                      { name: "鈴木 大輔", rating: "4.7", time: "7分", reviews: "208" },
+                      { name: "プロA", time: "5分" },
+                      { name: "プロB", time: "7分" },
                     ].map((pro) => (
                       <div
                         key={pro.name}
@@ -148,15 +164,13 @@ export default function Hero() {
                       >
                         <div className="flex items-center gap-2.5">
                           <div className="w-9 h-9 bg-[#e6f4ff] rounded-full flex items-center justify-center">
-                            <span className="text-[#0099e6] font-bold text-xs">
-                              {pro.name.charAt(0)}
-                            </span>
+                            <svg className="w-4 h-4 text-[#0099e6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
                           </div>
                           <div>
                             <p className="text-[11px] font-bold text-[#0a2540]">{pro.name}</p>
-                            <p className="text-[9px] text-[#5a7090]">
-                              ★ {pro.rating}（{pro.reviews}件）
-                            </p>
+                            <p className="text-[9px] text-[#5a7090]">レビュー準備中</p>
                           </div>
                         </div>
                         <span className="text-[10px] text-[#0099e6] font-bold bg-[#e6f4ff] px-2 py-0.5 rounded-full">
@@ -186,26 +200,6 @@ export default function Hero() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="mt-16 lg:mt-20">
-          <p className="text-center text-[11px] font-bold tracking-widest text-[#8ba0ba] mb-6">
-            FEATURED IN / メディア掲載
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-60">
-            {[
-              "日経クロストレンド",
-              "Forbes JAPAN",
-              "ITmedia",
-              "TechCrunch JP",
-              "GoodsPress",
-              "GQ JAPAN",
-            ].map((m) => (
-              <span key={m} className="text-[13px] font-bold text-[#5a7090] tracking-wide">
-                {m}
-              </span>
-            ))}
           </div>
         </div>
       </div>
