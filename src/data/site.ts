@@ -1,0 +1,41 @@
+export const SITE = {
+  name: "MobileWash",
+  nameJa: "モバイルウォッシュ",
+  url: "https://mobilewash.jp",
+  description:
+    "出張洗車・出張コーティングのプロを呼べるカーディテイリングアプリ。GPSで近くの認定プロを自動マッチング、最短5分で駐車場まで出張。手洗い洗車・ガラスコーティング・内装クリーニング・フルディテイリングを明朗会計でご提供します。",
+  shortDescription:
+    "出張洗車・出張コーティングのプロを呼べるカーディテイリングアプリ。最短5分で駐車場まで出張。",
+  catchphrase: "洗車を、呼ぶ時代。",
+  keywords: [
+    "出張洗車",
+    "出張コーティング",
+    "出張カーケア",
+    "手洗い洗車 出張",
+    "ガラスコーティング 出張",
+    "出張ディテイリング",
+    "カーディテイリング アプリ",
+    "洗車 アプリ",
+    "出張内装クリーニング",
+    "出張ポリッシュ",
+    "車内清掃 出張",
+    "コーティング マッチング",
+    "MobileWash",
+    "モバイルウォッシュ",
+  ],
+  locale: "ja_JP",
+  twitter: "@mobilewash_jp",
+  themeColor: "#00b4ff",
+  founded: "2026",
+  logo: "/logo.png",
+  ogImage: "/og.png",
+  contact: {
+    addressCountry: "JP",
+    addressLocality: "東京都",
+    addressRegion: "Tokyo",
+  },
+  sameAs: [
+    "https://twitter.com/mobilewash_jp",
+    "https://www.instagram.com/mobilewash_jp/",
+  ],
+} as const;

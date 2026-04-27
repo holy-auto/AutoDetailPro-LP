@@ -12,11 +12,33 @@ import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import ProRecruit from "@/components/ProRecruit";
 import CTA from "@/components/CTA";
+import SeoContent from "@/components/SeoContent";
 import Footer from "@/components/Footer";
+import JsonLd from "@/components/JsonLd";
+import { faqs } from "@/data/faq";
+import {
+  organizationLd,
+  websiteLd,
+  serviceLd,
+  mobileApplicationLd,
+  faqLd,
+  breadcrumbLd,
+} from "@/lib/seo";
 
 export default function Home() {
   return (
     <>
+      <JsonLd
+        id="ld-graph"
+        data={[
+          organizationLd(),
+          websiteLd(),
+          serviceLd(),
+          mobileApplicationLd(),
+          faqLd(faqs),
+          breadcrumbLd(),
+        ]}
+      />
       <Header />
       <main>
         <Hero />
@@ -31,6 +53,7 @@ export default function Home() {
         <Testimonials />
         <FAQ />
         <ProRecruit />
+        <SeoContent />
         <CTA />
       </main>
       <Footer />
