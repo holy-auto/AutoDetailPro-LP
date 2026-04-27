@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 
+const navItems = [
+  { href: "#features", label: "特徴" },
+  { href: "#services", label: "サービス" },
+  { href: "#plans", label: "料金" },
+  { href: "#how-it-works", label: "使い方" },
+  { href: "#areas", label: "対応エリア" },
+  { href: "#faq", label: "FAQ" },
+];
+
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -9,66 +18,65 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-b border-black/10">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          <a href="#" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-[#0a0a0a] flex items-center justify-center">
-              <span className="text-[#ffd900] font-black text-lg leading-none tracking-tighter">
+          <a href="#" className="flex items-center gap-2.5 shrink-0">
+            <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
+              <span className="text-[#ffd500] font-black text-[11px] leading-none tracking-tighter">
                 ADP
               </span>
             </div>
-            <span className="text-base font-black text-[#0a0a0a] tracking-tight hidden sm:inline">
-              Auto Detail Pro
-            </span>
+            <div className="hidden sm:flex flex-col leading-none">
+              <span className="text-base font-black text-black tracking-tight">
+                Auto Detail Pro
+              </span>
+              <span className="text-[10px] text-black/50 font-bold tracking-wider mt-0.5">
+                MOBILE CAR DETAILING
+              </span>
+            </div>
           </a>
 
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden lg:flex items-center gap-7">
+            {navItems.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="text-sm font-bold text-black hover:text-black/60 transition-colors"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="hidden lg:flex items-center gap-3">
             <a
-              href="#features"
-              className="text-sm font-bold text-[#0a0a0a] hover:text-[#ffd900] transition-colors"
+              href="#pro-recruit"
+              className="text-sm font-bold text-black hover:text-black/60 transition-colors"
             >
-              特徴
-            </a>
-            <a
-              href="#services"
-              className="text-sm font-bold text-[#0a0a0a] hover:text-[#ffd900] transition-colors"
-            >
-              サービス
-            </a>
-            <a
-              href="#how-it-works"
-              className="text-sm font-bold text-[#0a0a0a] hover:text-[#ffd900] transition-colors"
-            >
-              使い方
-            </a>
-            <a
-              href="#testimonials"
-              className="text-sm font-bold text-[#0a0a0a] hover:text-[#ffd900] transition-colors"
-            >
-              お客様の声
+              プロ募集
             </a>
             <a
               href="#cta"
-              className="group inline-flex items-center gap-2 bg-[#0a0a0a] text-white px-6 py-3 text-sm font-black hover:bg-[#ffd900] hover:text-[#0a0a0a] transition-colors"
+              className="group inline-flex items-center gap-1.5 bg-black text-white px-5 py-2.5 rounded-full text-sm font-black hover:bg-[#ffd500] hover:text-black transition-colors"
             >
-              アプリをダウンロード
+              アプリDL
               <svg
-                className="w-4 h-4 transition-transform group-hover:translate-x-0.5"
+                className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={2.5}
+                strokeWidth={3}
               >
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </a>
-          </nav>
+          </div>
 
           <button
-            className="md:hidden p-2"
+            className="lg:hidden p-2"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="メニュー"
           >
             <svg
-              className="w-6 h-6 text-[#0a0a0a]"
+              className="w-6 h-6 text-black"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -85,38 +93,27 @@ export default function Header() {
       </div>
 
       {menuOpen && (
-        <div className="md:hidden bg-white border-t border-black/10 px-4 py-4 space-y-3">
+        <div className="lg:hidden bg-white border-t border-black/10 px-4 py-4 space-y-1">
+          {navItems.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="block font-bold text-black py-3 border-b border-black/5"
+              onClick={() => setMenuOpen(false)}
+            >
+              {item.label}
+            </a>
+          ))}
           <a
-            href="#features"
-            className="block font-bold text-[#0a0a0a] py-2"
+            href="#pro-recruit"
+            className="block font-bold text-black py-3 border-b border-black/5"
             onClick={() => setMenuOpen(false)}
           >
-            特徴
-          </a>
-          <a
-            href="#services"
-            className="block font-bold text-[#0a0a0a] py-2"
-            onClick={() => setMenuOpen(false)}
-          >
-            サービス
-          </a>
-          <a
-            href="#how-it-works"
-            className="block font-bold text-[#0a0a0a] py-2"
-            onClick={() => setMenuOpen(false)}
-          >
-            使い方
-          </a>
-          <a
-            href="#testimonials"
-            className="block font-bold text-[#0a0a0a] py-2"
-            onClick={() => setMenuOpen(false)}
-          >
-            お客様の声
+            プロ募集
           </a>
           <a
             href="#cta"
-            className="block bg-[#0a0a0a] text-white text-center px-5 py-3 text-sm font-black"
+            className="block bg-black text-white text-center px-5 py-3 rounded-full text-sm font-black mt-3"
             onClick={() => setMenuOpen(false)}
           >
             アプリをダウンロード

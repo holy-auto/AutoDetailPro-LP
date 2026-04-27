@@ -2,10 +2,10 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #0a0a0a;
-  --primary: #ffd900;
-  --primary-dark: #e6c200;
-  --accent: #0a0a0a;
+  --foreground: #000000;
+  --primary: #ffd500;
+  --primary-dark: #f0c500;
+  --accent: #000000;
   --muted: #f5f5f5;
   --muted-foreground: #6b6b6b;
   --border: #e5e5e5;
@@ -43,6 +43,11 @@ html {
   line-height: 1.05;
 }
 
+.text-display {
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+}
+
 .marquee-track {
   display: flex;
   width: max-content;
@@ -61,9 +66,27 @@ html {
 .diagonal-stripe {
   background-image: repeating-linear-gradient(
     -45deg,
-    #0a0a0a,
-    #0a0a0a 14px,
-    #ffd900 14px,
-    #ffd900 28px
+    #000000,
+    #000000 14px,
+    #ffd500 14px,
+    #ffd500 28px
   );
+}
+
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(255, 213, 0, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+details[open] .faq-icon {
+  transform: rotate(45deg);
+}
+.faq-icon {
+  transition: transform 0.2s ease;
 }

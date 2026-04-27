@@ -1,43 +1,124 @@
 const steps = [
   {
     step: "01",
-    title: "アプリをダウンロード",
-    description: "App Store または Google Play から無料でダウンロード。会員登録は60秒で完了。",
+    title: "アプリをDL",
+    titleSub: "DOWNLOAD",
+    description: "App Store または Google Play から無料でダウンロード。会員登録は約60秒で完了します。",
+    visual: "phone-download",
   },
   {
     step: "02",
-    title: "サービスを選択",
-    description: "外装洗車、コーティングなど、必要なサービスをアプリで選びましょう。",
+    title: "メニューを選ぶ",
+    titleSub: "CHOOSE MENU",
+    description: "出張洗車・コーティングなど、必要なメニューと希望日時をアプリで選びましょう。",
+    visual: "menu",
   },
   {
     step: "03",
-    title: "プロが出張",
-    description: "GPSで近くのプロが自動マッチング。最短5分であなたの元へ到着します。",
+    title: "プロが出張到着",
+    titleSub: "PRO ARRIVES",
+    description: "GPSで近くのプロが自動マッチング。最短5分であなたの駐車場まで出張します。",
+    visual: "map",
   },
   {
     step: "04",
-    title: "施工完了・お支払い",
-    description: "施工完了後、アプリで簡単にお支払い。評価とレビューもお忘れなく。",
+    title: "施工完了・決済",
+    titleSub: "DONE",
+    description: "施工完了後、アプリで自動決済。レシートも電子発行。レビューもお忘れなく。",
+    visual: "done",
   },
 ];
 
+function StepVisual({ kind }: { kind: string }) {
+  if (kind === "phone-download") {
+    return (
+      <div className="relative w-full aspect-[4/3] bg-[#161616] rounded-2xl overflow-hidden flex items-center justify-center">
+        <div className="w-24 h-40 bg-black border-2 border-white/20 rounded-2xl p-1.5">
+          <div className="w-full h-full bg-[#ffd500] rounded-xl flex items-center justify-center">
+            <svg className="w-10 h-10 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (kind === "menu") {
+    return (
+      <div className="relative w-full aspect-[4/3] bg-[#161616] rounded-2xl overflow-hidden p-5 flex flex-col gap-2">
+        {["手洗い洗車", "ガラスコーティング", "内装クリーニング"].map((m, i) => (
+          <div
+            key={m}
+            className={`flex items-center justify-between rounded-xl px-4 py-3 ${
+              i === 1 ? "bg-[#ffd500] text-black" : "bg-white/5 text-white/70"
+            }`}
+          >
+            <span className="text-sm font-bold">{m}</span>
+            {i === 1 && (
+              <span className="w-5 h-5 bg-black rounded-full flex items-center justify-center">
+                <svg className="w-3 h-3 text-[#ffd500]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4}>
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (kind === "map") {
+    return (
+      <div className="relative w-full aspect-[4/3] bg-[#161616] rounded-2xl overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0 dot-grid opacity-50" />
+        <div className="relative">
+          <div className="absolute inset-0 w-16 h-16 bg-[#ffd500]/30 rounded-full animate-ping" />
+          <div className="relative w-16 h-16 bg-[#ffd500] rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-black" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+            </svg>
+          </div>
+        </div>
+        <div className="absolute bottom-3 left-3 right-3 bg-white/10 backdrop-blur rounded-lg px-3 py-2 flex items-center justify-between text-white">
+          <span className="text-xs font-bold">プロが向かっています</span>
+          <span className="text-xs font-black text-[#ffd500]">あと 5分</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="relative w-full aspect-[4/3] bg-[#161616] rounded-2xl overflow-hidden flex flex-col items-center justify-center gap-3">
+      <div className="w-16 h-16 bg-[#ffd500] rounded-full flex items-center justify-center">
+        <svg className="w-8 h-8 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+          <path d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <p className="text-white font-black text-sm">完了 — ありがとうございました</p>
+      <div className="flex gap-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <span key={i} className="text-[#ffd500] text-base">★</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative py-20 sm:py-32 bg-[#0a0a0a] text-white overflow-hidden">
+    <section id="how-it-works" className="relative py-20 sm:py-32 bg-black text-white overflow-hidden">
       <div className="absolute inset-0 pointer-events-none opacity-30">
-        <div className="absolute top-1/2 -translate-y-1/2 -right-40 w-[500px] h-[500px] bg-[#ffd900] rounded-full blur-3xl" />
+        <div className="absolute top-1/2 -translate-y-1/2 -right-40 w-[500px] h-[500px] bg-[#ffd500] rounded-full blur-3xl" />
       </div>
 
       <div className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <div className="grid lg:grid-cols-12 gap-10 mb-16 items-end">
           <div className="lg:col-span-7">
-            <p className="inline-block bg-[#ffd900] text-[#0a0a0a] text-xs font-black px-3 py-1.5 uppercase tracking-wider mb-6">
+            <p className="text-[11px] font-bold tracking-[0.3em] text-[#ffd500] uppercase mb-4">
               HOW IT WORKS / 使い方
             </p>
             <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black">
               使い方は、
               <br />
-              <span className="text-[#ffd900]">かんたん</span>4ステップ。
+              <span className="text-[#ffd500]">かんたん</span>4ステップ。
             </h2>
           </div>
           <div className="lg:col-span-5">
@@ -48,34 +129,33 @@ export default function HowItWorks() {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-white/10">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {steps.map((item, index) => (
-            <div key={item.step} className="relative bg-[#0a0a0a] p-8 hover:bg-[#161616] transition-colors">
-              <div className="flex items-baseline gap-3 mb-6">
-                <span className="text-6xl lg:text-7xl font-black text-[#ffd900] leading-none">
-                  {item.step}
-                </span>
-                {index < steps.length - 1 && (
-                  <div className="hidden lg:flex flex-1 items-center pb-2">
-                    <div className="flex-1 h-px bg-[#ffd900]/30" />
-                    <svg
-                      className="w-4 h-4 text-[#ffd900]/50"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2.5}
-                    >
-                      <path d="M5 12h14M13 6l6 6-6 6" />
-                    </svg>
-                  </div>
-                )}
+            <div key={item.step} className="relative">
+              <div className="bg-[#0e0e0e] border border-white/10 rounded-3xl p-6 hover:border-[#ffd500] transition-colors h-full flex flex-col">
+                <StepVisual kind={item.visual} />
+                <div className="flex items-baseline gap-3 mt-6 mb-3">
+                  <span className="text-4xl lg:text-5xl font-black text-[#ffd500] leading-none tracking-tighter">
+                    {item.step}
+                  </span>
+                  <span className="text-[10px] font-bold text-white/40 tracking-widest">
+                    {item.titleSub}
+                  </span>
+                </div>
+                <h3 className="text-xl lg:text-2xl font-black mb-2 leading-tight">
+                  {item.title}
+                </h3>
+                <p className="text-sm text-white/60 leading-relaxed">
+                  {item.description}
+                </p>
               </div>
-              <h3 className="text-xl lg:text-2xl font-black mb-3 leading-tight">
-                {item.title}
-              </h3>
-              <p className="text-sm text-white/60 leading-relaxed">
-                {item.description}
-              </p>
+              {index < steps.length - 1 && (
+                <div className="hidden lg:flex absolute top-1/2 -right-3 -translate-y-1/2 z-10 w-6 h-6 bg-[#ffd500] rounded-full items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4}>
+                    <path d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -83,7 +163,7 @@ export default function HowItWorks() {
         <div className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
             href="#cta"
-            className="group inline-flex items-center justify-center gap-2 bg-[#ffd900] text-[#0a0a0a] font-black px-8 py-4 hover:bg-white transition-colors"
+            className="group inline-flex items-center justify-center gap-2 bg-[#ffd500] text-black font-black px-8 py-4 rounded-full hover:bg-white transition-colors"
           >
             今すぐアプリをダウンロード
             <svg

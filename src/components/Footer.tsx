@@ -1,22 +1,29 @@
 export default function Footer() {
   return (
-    <footer className="bg-[#0a0a0a] text-white">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-16">
+    <footer className="bg-black text-white">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-16 lg:py-20">
         <div className="grid lg:grid-cols-12 gap-10 mb-12">
           <div className="lg:col-span-4">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-12 h-12 bg-[#ffd900] flex items-center justify-center">
-                <span className="text-[#0a0a0a] font-black text-base tracking-tighter">ADP</span>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-[#ffd500] rounded-full flex items-center justify-center">
+                <span className="text-black font-black text-sm tracking-tighter">ADP</span>
               </div>
-              <span className="text-white font-black text-lg">Auto Detail Pro</span>
+              <div>
+                <p className="text-white font-black text-base leading-none">
+                  Auto Detail Pro
+                </p>
+                <p className="text-white/40 font-bold text-[10px] tracking-widest mt-1">
+                  MOBILE CAR DETAILING
+                </p>
+              </div>
             </div>
             <p className="text-sm text-white/70 leading-relaxed mb-6 max-w-xs">
-              プロのカーディテイリングを、あなたの元へ。
-              出張型カーケアサービスのスタンダードを目指して。
+              出張洗車・出張コーティングのプロを、あなたの元へ。
+              スマホひとつで、車のお手入れを変えていきます。
             </p>
             <a
               href="#cta"
-              className="inline-flex items-center gap-2 bg-[#ffd900] text-[#0a0a0a] font-black px-5 py-3 text-sm hover:bg-white transition-colors"
+              className="inline-flex items-center gap-2 bg-[#ffd500] text-black font-black px-5 py-3 rounded-full text-sm hover:bg-white transition-colors"
             >
               アプリをダウンロード
               <svg
@@ -32,48 +39,53 @@ export default function Footer() {
           </div>
 
           <div className="lg:col-span-2">
-            <h4 className="text-[#ffd900] font-black text-xs tracking-widest uppercase mb-5">
+            <h4 className="text-[#ffd500] font-black text-xs tracking-widest uppercase mb-5">
               SERVICE
             </h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">外装洗車</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">内装クリーニング</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">コーティング</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">フルディテイル</a></li>
+              <li><a href="#services" className="text-white/70 hover:text-[#ffd500] transition-colors">出張洗車</a></li>
+              <li><a href="#services" className="text-white/70 hover:text-[#ffd500] transition-colors">出張コーティング</a></li>
+              <li><a href="#services" className="text-white/70 hover:text-[#ffd500] transition-colors">内装クリーニング</a></li>
+              <li><a href="#services" className="text-white/70 hover:text-[#ffd500] transition-colors">ポリッシュ磨き</a></li>
+              <li><a href="#services" className="text-white/70 hover:text-[#ffd500] transition-colors">フルディテイリング</a></li>
             </ul>
           </div>
 
           <div className="lg:col-span-2">
-            <h4 className="text-[#ffd900] font-black text-xs tracking-widest uppercase mb-5">
-              COMPANY
+            <h4 className="text-[#ffd500] font-black text-xs tracking-widest uppercase mb-5">
+              PLAN
             </h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">会社概要</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">採用情報</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">プレス</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">お問い合わせ</a></li>
+              <li><a href="#plans" className="text-white/70 hover:text-[#ffd500] transition-colors">都度払い</a></li>
+              <li><a href="#plans" className="text-white/70 hover:text-[#ffd500] transition-colors">定額ライト</a></li>
+              <li><a href="#plans" className="text-white/70 hover:text-[#ffd500] transition-colors">定額プレミアム</a></li>
+              <li><a href="#" className="text-white/70 hover:text-[#ffd500] transition-colors">法人プラン</a></li>
             </ul>
           </div>
 
           <div className="lg:col-span-2">
-            <h4 className="text-[#ffd900] font-black text-xs tracking-widest uppercase mb-5">
+            <h4 className="text-[#ffd500] font-black text-xs tracking-widest uppercase mb-5">
               SUPPORT
             </h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">よくあるご質問</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">対応エリア</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">プロ募集</a></li>
+              <li><a href="#faq" className="text-white/70 hover:text-[#ffd500] transition-colors">よくある質問</a></li>
+              <li><a href="#areas" className="text-white/70 hover:text-[#ffd500] transition-colors">対応エリア</a></li>
+              <li><a href="#pro-recruit" className="text-white/70 hover:text-[#ffd500] transition-colors">プロ募集</a></li>
+              <li><a href="#" className="text-white/70 hover:text-[#ffd500] transition-colors">お問い合わせ</a></li>
             </ul>
           </div>
 
           <div className="lg:col-span-2">
-            <h4 className="text-[#ffd900] font-black text-xs tracking-widest uppercase mb-5">
-              LEGAL
+            <h4 className="text-[#ffd500] font-black text-xs tracking-widest uppercase mb-5">
+              COMPANY
             </h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">利用規約</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">プライバシーポリシー</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">特定商取引法</a></li>
+              <li><a href="#" className="text-white/70 hover:text-[#ffd500] transition-colors">会社概要</a></li>
+              <li><a href="#" className="text-white/70 hover:text-[#ffd500] transition-colors">採用情報</a></li>
+              <li><a href="#" className="text-white/70 hover:text-[#ffd500] transition-colors">プレスリリース</a></li>
+              <li><a href="#" className="text-white/70 hover:text-[#ffd500] transition-colors">利用規約</a></li>
+              <li><a href="#" className="text-white/70 hover:text-[#ffd500] transition-colors">プライバシーポリシー</a></li>
+              <li><a href="#" className="text-white/70 hover:text-[#ffd500] transition-colors">特定商取引法</a></li>
             </ul>
           </div>
         </div>
