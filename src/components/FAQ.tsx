@@ -39,22 +39,22 @@ export default function FAQ() {
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <div className="grid lg:grid-cols-12 gap-10">
           <div className="lg:col-span-4">
-            <p className="text-[11px] font-bold tracking-[0.3em] text-black/50 uppercase mb-4">
+            <p className="text-[11px] font-bold tracking-[0.3em] text-[#0a2540]/50 uppercase mb-4">
               FAQ / よくある質問
             </p>
-            <h2 className="heading-tight text-4xl sm:text-5xl font-black text-black mb-5">
+            <h2 className="heading-tight text-4xl sm:text-5xl font-black text-[#0a2540] mb-5">
               気になること、
               <br />
-              <span className="bg-[#ffd500] px-2">ぜんぶ</span>
+              <span className="bg-[#00b4ff] px-2">ぜんぶ</span>
               。
             </h2>
-            <p className="text-base text-black/65 leading-relaxed mb-8">
+            <p className="text-base text-[#0a2540]/65 leading-relaxed mb-8">
               ご利用前のご不明点は、こちらでチェック。
               さらに詳しく知りたい方は、お気軽にお問い合わせください。
             </p>
             <a
               href="#cta"
-              className="inline-flex items-center gap-2 bg-black text-white font-black px-6 py-3 rounded-full text-sm hover:bg-[#ffd500] hover:text-black transition-colors"
+              className="inline-flex items-center gap-2 bg-[#0a2540] text-white font-black px-6 py-3 rounded-full text-sm hover:bg-[#00b4ff] hover:text-[#0a2540] transition-colors"
             >
               お問い合わせ
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
@@ -68,20 +68,20 @@ export default function FAQ() {
               {faqs.map((faq, i) => (
                 <details
                   key={i}
-                  className="group bg-white rounded-2xl border-2 border-black/5 hover:border-black transition-colors overflow-hidden"
+                  className="group bg-white rounded-2xl border-2 border-[#0a2540]/5 hover:border-[#0a2540] transition-colors overflow-hidden"
                 >
                   <summary className="cursor-pointer list-none flex items-start justify-between gap-4 p-6">
                     <div className="flex items-start gap-4 flex-1">
-                      <span className="shrink-0 w-8 h-8 bg-black text-[#ffd500] rounded-full flex items-center justify-center font-black text-sm">
+                      <span className="shrink-0 w-8 h-8 bg-[#0a2540] text-[#00b4ff] rounded-full flex items-center justify-center font-black text-sm">
                         Q
                       </span>
-                      <h3 className="text-base lg:text-lg font-black text-black leading-snug pt-1">
+                      <h3 className="text-base lg:text-lg font-black text-[#0a2540] leading-snug pt-1">
                         {faq.q}
                       </h3>
                     </div>
-                    <span className="faq-icon shrink-0 w-8 h-8 bg-[#ffd500] rounded-full flex items-center justify-center mt-0.5">
+                    <span className="faq-icon shrink-0 w-8 h-8 bg-[#00b4ff] rounded-full flex items-center justify-center mt-0.5">
                       <svg
-                        className="w-4 h-4 text-black"
+                        className="w-4 h-4 text-[#0a2540]"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -93,7 +93,7 @@ export default function FAQ() {
                   </summary>
                   <div className="px-6 pb-6 pl-[72px]">
                     <div className="flex items-start gap-4">
-                      <p className="text-sm lg:text-base text-black/70 leading-relaxed">
+                      <p className="text-sm lg:text-base text-[#0a2540]/70 leading-relaxed">
                         {faq.a}
                       </p>
                     </div>

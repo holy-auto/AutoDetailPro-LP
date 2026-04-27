@@ -13,7 +13,7 @@ const testimonials = [
     car: "BMW 3シリーズ",
     service: "出張ガラスコーティング",
     rating: 5,
-    text: "ディーラーで20万円と言われたコーティングが、Auto Detail Pro なら3万円台。仕上がりは新車以上。プロの腕前に感動しました。",
+    text: "ディーラーで20万円と言われたコーティングが、MobileWash なら3万円台。仕上がりは新車以上。プロの腕前に感動しました。",
   },
   {
     name: "鈴木 健一",
@@ -31,17 +31,17 @@ export default function Testimonials() {
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <div className="grid lg:grid-cols-12 gap-10 mb-16 items-end">
           <div className="lg:col-span-7">
-            <p className="text-[11px] font-bold tracking-[0.3em] text-black/50 uppercase mb-4">
+            <p className="text-[11px] font-bold tracking-[0.3em] text-[#0a2540]/50 uppercase mb-4">
               VOICE / お客様の声
             </p>
-            <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-black">
+            <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-[#0a2540]">
               選ばれている、
               <br />
-              <span className="bg-[#ffd500] px-2">確かな</span>理由。
+              <span className="bg-[#00b4ff] px-2">確かな</span>理由。
             </h2>
           </div>
           <div className="lg:col-span-5">
-            <p className="text-base lg:text-lg text-black/65 leading-relaxed">
+            <p className="text-base lg:text-lg text-[#0a2540]/65 leading-relaxed">
               ご利用いただいたお客様から、たくさんのご好評をいただいています。
               リアルな声をぜひご覧ください。
             </p>
@@ -52,20 +52,20 @@ export default function Testimonials() {
           {testimonials.map((t, idx) => (
             <div
               key={t.name}
-              className="relative bg-white border-2 border-black rounded-3xl p-8 hover:bg-black hover:text-white transition-colors group"
+              className="relative bg-white border-2 border-[#0a2540] rounded-3xl p-8 hover:bg-[#0a2540] hover:text-white transition-colors group"
             >
-              <span className="absolute top-4 right-7 text-7xl font-black text-[#ffd500] leading-none">
+              <span className="absolute top-4 right-7 text-7xl font-black text-[#00b4ff] leading-none">
                 &ldquo;
               </span>
 
               <div className="relative">
                 <div className="flex items-center justify-between mb-5">
-                  <p className="text-xs font-black text-black group-hover:text-[#ffd500] transition-colors tracking-wider">
+                  <p className="text-xs font-black text-[#0a2540] group-hover:text-[#00b4ff] transition-colors tracking-wider">
                     CASE / {String(idx + 1).padStart(2, "0")}
                   </p>
                 </div>
 
-                <div className="inline-flex items-center gap-2 bg-[#ffd500] text-black text-[10px] font-black px-2.5 py-1 rounded-full mb-4">
+                <div className="inline-flex items-center gap-2 bg-[#00b4ff] text-[#0a2540] text-[10px] font-black px-2.5 py-1 rounded-full mb-4">
                   {t.service}
                 </div>
 
@@ -73,7 +73,7 @@ export default function Testimonials() {
                   {Array.from({ length: t.rating }).map((_, i) => (
                     <svg
                       key={i}
-                      className="w-4 h-4 text-[#ffd500]"
+                      className="w-4 h-4 text-[#00b4ff]"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -81,20 +81,20 @@ export default function Testimonials() {
                     </svg>
                   ))}
                 </div>
-                <p className="font-bold text-black group-hover:text-white text-base leading-relaxed mb-8 transition-colors">
+                <p className="font-bold text-[#0a2540] group-hover:text-white text-base leading-relaxed mb-8 transition-colors">
                   {t.text}
                 </p>
-                <div className="flex items-center gap-3 pt-6 border-t border-black/10 group-hover:border-white/20 transition-colors">
-                  <div className="w-11 h-11 bg-[#ffd500] rounded-full flex items-center justify-center">
-                    <span className="text-black font-black text-base">
+                <div className="flex items-center gap-3 pt-6 border-t border-[#0a2540]/10 group-hover:border-white/20 transition-colors">
+                  <div className="w-11 h-11 bg-[#00b4ff] rounded-full flex items-center justify-center">
+                    <span className="text-[#0a2540] font-black text-base">
                       {t.name.charAt(0)}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-black text-black group-hover:text-white text-sm transition-colors">
+                    <p className="font-black text-[#0a2540] group-hover:text-white text-sm transition-colors">
                       {t.name}
                     </p>
-                    <p className="text-black/60 group-hover:text-white/60 text-[11px] transition-colors truncate">
+                    <p className="text-[#0a2540]/60 group-hover:text-white/60 text-[11px] transition-colors truncate">
                       {t.role} ・ {t.car}
                     </p>
                   </div>

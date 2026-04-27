@@ -12,33 +12,33 @@ export default function Comparison() {
     <section className="relative py-20 sm:py-32 bg-[#f5f5f5]">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <div className="text-center mb-12">
-          <p className="text-[11px] font-bold tracking-[0.3em] text-black/50 uppercase mb-4">
+          <p className="text-[11px] font-bold tracking-[0.3em] text-[#0a2540]/50 uppercase mb-4">
             COMPARISON / 比較
           </p>
-          <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-black mb-5">
+          <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-[#0a2540] mb-5">
             出張型と従来型、
             <br />
-            <span className="bg-[#ffd500] px-2">比べてみた</span>。
+            <span className="bg-[#00b4ff] px-2">比べてみた</span>。
           </h2>
-          <p className="text-base lg:text-lg text-black/65 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base lg:text-lg text-[#0a2540]/65 max-w-2xl mx-auto leading-relaxed">
             ガソリンスタンドや専門店との違いを、6つの項目で比較しました。
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl overflow-hidden border-2 border-black">
-          <div className="grid grid-cols-3 bg-black text-white">
+        <div className="bg-white rounded-3xl overflow-hidden border-2 border-[#0a2540]">
+          <div className="grid grid-cols-3 bg-[#0a2540] text-white">
             <div className="p-5 lg:p-6">
               <p className="text-[10px] font-bold text-white/50 tracking-widest mb-1">
                 CATEGORY
               </p>
               <p className="font-black text-sm lg:text-base">項目</p>
             </div>
-            <div className="p-5 lg:p-6 bg-[#ffd500] text-black border-x-2 border-black relative">
-              <span className="absolute top-3 right-3 text-[9px] font-black bg-black text-[#ffd500] px-2 py-0.5 rounded-full">
+            <div className="p-5 lg:p-6 bg-[#00b4ff] text-[#0a2540] border-x-2 border-[#0a2540] relative">
+              <span className="absolute top-3 right-3 text-[9px] font-black bg-[#0a2540] text-[#00b4ff] px-2 py-0.5 rounded-full">
                 BEST
               </span>
-              <p className="text-[10px] font-bold text-black/60 tracking-widest mb-1">
-                AUTO DETAIL PRO
+              <p className="text-[10px] font-bold text-[#0a2540]/60 tracking-widest mb-1">
+                MOBILEWASH
               </p>
               <p className="font-black text-sm lg:text-base">出張型アプリ</p>
             </div>
@@ -53,30 +53,30 @@ export default function Comparison() {
           {rows.map((row, i) => (
             <div
               key={row.feature}
-              className={`grid grid-cols-3 ${i !== rows.length - 1 ? "border-b border-black/10" : ""}`}
+              className={`grid grid-cols-3 ${i !== rows.length - 1 ? "border-b border-[#0a2540]/10" : ""}`}
             >
               <div className="p-5 lg:p-6 flex items-center bg-white">
-                <p className="text-sm lg:text-base font-black text-black">
+                <p className="text-sm lg:text-base font-black text-[#0a2540]">
                   {row.feature}
                 </p>
               </div>
-              <div className="p-5 lg:p-6 bg-[#fffbe5] border-x-2 border-black/5 flex items-start gap-2">
-                <span className="shrink-0 w-5 h-5 bg-black rounded-full flex items-center justify-center mt-0.5">
-                  <svg className="w-3 h-3 text-[#ffd500]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4}>
+              <div className="p-5 lg:p-6 bg-[#e8f7ff] border-x-2 border-[#0a2540]/5 flex items-start gap-2">
+                <span className="shrink-0 w-5 h-5 bg-[#0a2540] rounded-full flex items-center justify-center mt-0.5">
+                  <svg className="w-3 h-3 text-[#00b4ff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4}>
                     <path d="M5 13l4 4L19 7" />
                   </svg>
                 </span>
-                <p className="text-sm lg:text-base font-bold text-black leading-snug">
+                <p className="text-sm lg:text-base font-bold text-[#0a2540] leading-snug">
                   {row.us}
                 </p>
               </div>
               <div className="p-5 lg:p-6 bg-white flex items-start gap-2">
-                <span className="shrink-0 w-5 h-5 bg-black/10 rounded-full flex items-center justify-center mt-0.5">
-                  <svg className="w-3 h-3 text-black/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5}>
+                <span className="shrink-0 w-5 h-5 bg-[#0a2540]/10 rounded-full flex items-center justify-center mt-0.5">
+                  <svg className="w-3 h-3 text-[#0a2540]/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5}>
                     <path d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </span>
-                <p className="text-sm lg:text-base text-black/60 leading-snug">
+                <p className="text-sm lg:text-base text-[#0a2540]/60 leading-snug">
                   {row.others}
                 </p>
               </div>

@@ -44,21 +44,21 @@ export default function Problems() {
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <div className="grid lg:grid-cols-12 gap-10 mb-14 items-end">
           <div className="lg:col-span-7">
-            <p className="text-[11px] font-bold tracking-[0.3em] text-black/50 uppercase mb-4">
+            <p className="text-[11px] font-bold tracking-[0.3em] text-[#0a2540]/50 uppercase mb-4">
               PAIN POINTS / お悩み
             </p>
-            <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-black">
+            <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-[#0a2540]">
               こんな
-              <span className="bg-[#ffd500] px-2">お悩み</span>
+              <span className="bg-[#00b4ff] px-2">お悩み</span>
               、
               <br />
               ありませんか？
             </h2>
           </div>
           <div className="lg:col-span-5">
-            <p className="text-base lg:text-lg text-black/70 leading-relaxed">
+            <p className="text-base lg:text-lg text-[#0a2540]/70 leading-relaxed">
               洗車もコーティングも「やりたい」けど、時間も場所も予算も足りない。
-              そんな声に応えるのが Auto Detail Pro です。
+              そんな声に応えるのが MobileWash です。
             </p>
           </div>
         </div>
@@ -67,31 +67,31 @@ export default function Problems() {
           {problems.map((p) => (
             <div
               key={p.title}
-              className="bg-white rounded-3xl p-7 border-2 border-black/5 hover:border-black transition-colors"
+              className="bg-white rounded-3xl p-7 border-2 border-[#0a2540]/5 hover:border-[#0a2540] transition-colors"
             >
-              <div className="w-14 h-14 bg-black text-[#ffd500] rounded-2xl flex items-center justify-center mb-6">
+              <div className="w-14 h-14 bg-[#0a2540] text-[#00b4ff] rounded-2xl flex items-center justify-center mb-6">
                 {p.icon}
               </div>
-              <h3 className="text-lg lg:text-xl font-black text-black mb-3 leading-tight">
+              <h3 className="text-lg lg:text-xl font-black text-[#0a2540] mb-3 leading-tight">
                 {p.title}
               </h3>
-              <p className="text-sm text-black/65 leading-relaxed">
+              <p className="text-sm text-[#0a2540]/65 leading-relaxed">
                 {p.description}
               </p>
             </div>
           ))}
         </div>
 
-        <div className="mt-12 lg:mt-16 bg-black text-white rounded-3xl p-8 sm:p-12 lg:p-14 relative overflow-hidden">
-          <div className="absolute -top-20 -right-20 w-80 h-80 bg-[#ffd500] rounded-full opacity-15 blur-3xl" />
+        <div className="mt-12 lg:mt-16 bg-[#0a2540] text-white rounded-3xl p-8 sm:p-12 lg:p-14 relative overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-80 h-80 bg-[#00b4ff] rounded-full opacity-15 blur-3xl" />
           <div className="relative grid lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-8">
-              <p className="text-[11px] font-bold tracking-[0.3em] text-[#ffd500] uppercase mb-3">
+              <p className="text-[11px] font-bold tracking-[0.3em] text-[#00b4ff] uppercase mb-3">
                 OUR ANSWER
               </p>
               <h3 className="heading-tight text-2xl sm:text-3xl lg:text-4xl font-black mb-4">
                 ぜんぶ、
-                <span className="text-[#ffd500]">出張プロ</span>
+                <span className="text-[#00b4ff]">出張プロ</span>
                 がやります。
               </h3>
               <p className="text-white/75 text-base lg:text-lg leading-relaxed max-w-2xl">
@@ -103,7 +103,7 @@ export default function Problems() {
             <div className="lg:col-span-4 lg:text-right">
               <a
                 href="#cta"
-                className="inline-flex items-center gap-2 bg-[#ffd500] text-black font-black px-7 py-4 rounded-full hover:bg-white transition-colors"
+                className="inline-flex items-center gap-2 bg-[#00b4ff] text-[#0a2540] font-black px-7 py-4 rounded-full hover:bg-white transition-colors"
               >
                 今すぐ解決する
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>

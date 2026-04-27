@@ -19,11 +19,11 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "Auto Detail Pro | プロが今すぐ出張するカーディテイリングアプリ",
+  title: "MobileWash | プロが今すぐ出張するカーディテイリングアプリ",
   description:
-    "GPSで近くのカーディテイリングプロを検索。外装洗車、内装クリーニング、コーティングなど、プロが今すぐあなたの元へ出張します。",
+    "GPSで近くのカーディテイリングプロを検索。出張洗車・出張コーティング・内装クリーニングなど、プロが今すぐあなたの元へ出張します。",
   openGraph: {
-    title: "Auto Detail Pro | プロが今すぐ出張するカーディテイリングアプリ",
+    title: "MobileWash | プロが今すぐ出張するカーディテイリングアプリ",
     description:
       "GPSで近くのカーディテイリングプロを検索。プロが今すぐあなたの元へ出張します。",
     type: "website",
@@ -40,7 +40,7 @@ export default function RootLayout({
       lang="ja"
       className={`${geistSans.variable} ${geistMono.variable} ${notoSansJP.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-white text-[#0a0a0a]">
+      <body className="min-h-full flex flex-col bg-white text-[#0a2540]">
         {children}
       </body>
     </html>

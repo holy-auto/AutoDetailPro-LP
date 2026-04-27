@@ -52,46 +52,46 @@ export default function Features() {
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <div className="grid lg:grid-cols-12 gap-10 mb-16 items-end">
           <div className="lg:col-span-7">
-            <p className="text-[11px] font-bold tracking-[0.3em] text-black/50 uppercase mb-4">
+            <p className="text-[11px] font-bold tracking-[0.3em] text-[#0a2540]/50 uppercase mb-4">
               FEATURES / 特徴
             </p>
-            <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-black">
+            <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-[#0a2540]">
               選ばれる、
               <br />
-              4つの<span className="bg-[#ffd500] px-2">理由</span>。
+              4つの<span className="bg-[#00b4ff] px-2">理由</span>。
             </h2>
           </div>
           <div className="lg:col-span-5">
-            <p className="text-base lg:text-lg text-black/65 leading-relaxed">
+            <p className="text-base lg:text-lg text-[#0a2540]/65 leading-relaxed">
               スマホひとつで、出張洗車・出張コーティングのプロをあなたの元へ。
               スピード・透明性・確かな品質で、車のお手入れを変えていきます。
             </p>
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-0 border-t border-l border-black">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-0 border-t border-l border-[#0a2540]">
           {features.map((feature) => (
             <div
               key={feature.num}
-              className="group relative p-8 border-r border-b border-black bg-white hover:bg-[#ffd500] transition-colors"
+              className="group relative p-8 border-r border-b border-[#0a2540] bg-white hover:bg-[#00b4ff] transition-colors"
             >
               <div className="flex items-start justify-between mb-8">
-                <div className="w-14 h-14 bg-black text-[#ffd500] group-hover:bg-white group-hover:text-black rounded-2xl flex items-center justify-center transition-colors">
+                <div className="w-14 h-14 bg-[#0a2540] text-[#00b4ff] group-hover:bg-white group-hover:text-[#0a2540] rounded-2xl flex items-center justify-center transition-colors">
                   {feature.icon}
                 </div>
                 <div className="text-right">
-                  <span className="block text-2xl font-black text-black/30 group-hover:text-black/50 transition-colors leading-none">
+                  <span className="block text-2xl font-black text-[#0a2540]/30 group-hover:text-[#0a2540]/50 transition-colors leading-none">
                     {feature.num}
                   </span>
-                  <span className="block text-[9px] font-bold text-black/40 group-hover:text-black/60 tracking-widest mt-1">
+                  <span className="block text-[9px] font-bold text-[#0a2540]/40 group-hover:text-[#0a2540]/60 tracking-widest mt-1">
                     {feature.en}
                   </span>
                 </div>
               </div>
-              <h3 className="text-xl lg:text-2xl font-black text-black mb-3 whitespace-pre-line leading-tight">
+              <h3 className="text-xl lg:text-2xl font-black text-[#0a2540] mb-3 whitespace-pre-line leading-tight">
                 {feature.title}
               </h3>
-              <p className="text-sm text-black/70 leading-relaxed">
+              <p className="text-sm text-[#0a2540]/70 leading-relaxed">
                 {feature.description}
               </p>
             </div>

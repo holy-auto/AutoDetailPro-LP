@@ -54,15 +54,15 @@ export default function Plans() {
     <section id="plans" className="relative py-20 sm:py-32 bg-white">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <div className="text-center mb-14">
-          <p className="text-[11px] font-bold tracking-[0.3em] text-black/50 uppercase mb-4">
+          <p className="text-[11px] font-bold tracking-[0.3em] text-[#0a2540]/50 uppercase mb-4">
             PLANS / 料金プラン
           </p>
-          <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-black mb-5">
+          <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-[#0a2540] mb-5">
             ライフスタイルに、
             <br />
-            合わせて<span className="bg-[#ffd500] px-2">選ぶ</span>。
+            合わせて<span className="bg-[#00b4ff] px-2">選ぶ</span>。
           </h2>
-          <p className="text-base lg:text-lg text-black/65 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base lg:text-lg text-[#0a2540]/65 max-w-2xl mx-auto leading-relaxed">
             「使いたい時だけ」も「毎週ピカピカ」も。
             <br className="hidden sm:inline" />
             あなたのカーライフに合わせて、ぴったりのプランをお選びいただけます。
@@ -75,14 +75,14 @@ export default function Plans() {
               key={plan.name}
               className={`relative rounded-3xl p-8 lg:p-10 flex flex-col ${
                 plan.accent
-                  ? "bg-black text-white"
-                  : "bg-white border-2 border-black/10 text-black"
+                  ? "bg-[#0a2540] text-white"
+                  : "bg-white border-2 border-[#0a2540]/10 text-[#0a2540]"
               }`}
             >
               {plan.badge && (
                 <span
                   className={`absolute -top-3 left-8 text-[11px] font-black px-3 py-1.5 rounded-full ${
-                    plan.accent ? "bg-[#ffd500] text-black" : "bg-black text-[#ffd500]"
+                    plan.accent ? "bg-[#00b4ff] text-[#0a2540]" : "bg-[#0a2540] text-[#00b4ff]"
                   }`}
                 >
                   {plan.badge}
@@ -91,7 +91,7 @@ export default function Plans() {
 
               <p
                 className={`text-[10px] font-bold tracking-[0.3em] uppercase mb-3 ${
-                  plan.accent ? "text-[#ffd500]" : "text-black/40"
+                  plan.accent ? "text-[#00b4ff]" : "text-[#0a2540]/40"
                 }`}
               >
                 {plan.nameEn}
@@ -99,7 +99,7 @@ export default function Plans() {
               <h3 className="text-2xl lg:text-3xl font-black mb-3">{plan.name}</h3>
               <p
                 className={`text-sm mb-8 leading-relaxed ${
-                  plan.accent ? "text-white/70" : "text-black/65"
+                  plan.accent ? "text-white/70" : "text-[#0a2540]/65"
                 }`}
               >
                 {plan.description}
@@ -113,7 +113,7 @@ export default function Plans() {
                   </span>
                   <span
                     className={`text-base font-bold ml-1 ${
-                      plan.accent ? "text-white/60" : "text-black/60"
+                      plan.accent ? "text-white/60" : "text-[#0a2540]/60"
                     }`}
                   >
                     {plan.unit}
@@ -121,7 +121,7 @@ export default function Plans() {
                 </div>
                 <p
                   className={`text-[11px] mt-2 ${
-                    plan.accent ? "text-white/50" : "text-black/50"
+                    plan.accent ? "text-white/50" : "text-[#0a2540]/50"
                   }`}
                 >
                   税込・出張料込み
@@ -133,7 +133,7 @@ export default function Plans() {
                   <li key={f} className="flex items-start gap-3 text-sm font-medium">
                     <span
                       className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 ${
-                        plan.accent ? "bg-[#ffd500] text-black" : "bg-black text-[#ffd500]"
+                        plan.accent ? "bg-[#00b4ff] text-[#0a2540]" : "bg-[#0a2540] text-[#00b4ff]"
                       }`}
                     >
                       <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4}>
@@ -149,8 +149,8 @@ export default function Plans() {
                 href="#cta"
                 className={`block text-center font-black px-6 py-4 rounded-full transition-colors ${
                   plan.accent
-                    ? "bg-[#ffd500] text-black hover:bg-white"
-                    : "bg-black text-white hover:bg-[#ffd500] hover:text-black"
+                    ? "bg-[#00b4ff] text-[#0a2540] hover:bg-white"
+                    : "bg-[#0a2540] text-white hover:bg-[#00b4ff] hover:text-[#0a2540]"
                 }`}
               >
                 {plan.cta}
@@ -159,7 +159,7 @@ export default function Plans() {
           ))}
         </div>
 
-        <p className="text-center text-xs text-black/50 mt-8">
+        <p className="text-center text-xs text-[#0a2540]/50 mt-8">
           ※ 定額プランはいつでも解約・プラン変更が可能です。最低契約期間はありません。
         </p>
       </div>
