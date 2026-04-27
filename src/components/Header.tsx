@@ -6,60 +6,59 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-b border-black/10">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+        <div className="flex items-center justify-between h-16 lg:h-20">
+          <a href="#" className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-[#0a0a0a] flex items-center justify-center">
+              <span className="text-[#ffd900] font-black text-lg leading-none tracking-tighter">
+                ADP
+              </span>
             </div>
-            <span className="text-xl font-bold text-gray-900">
+            <span className="text-base font-black text-[#0a0a0a] tracking-tight hidden sm:inline">
               Auto Detail Pro
             </span>
-          </div>
+          </a>
 
           <nav className="hidden md:flex items-center gap-8">
             <a
               href="#features"
-              className="text-sm text-gray-600 hover:text-primary transition-colors"
+              className="text-sm font-bold text-[#0a0a0a] hover:text-[#ffd900] transition-colors"
             >
               特徴
             </a>
             <a
               href="#services"
-              className="text-sm text-gray-600 hover:text-primary transition-colors"
+              className="text-sm font-bold text-[#0a0a0a] hover:text-[#ffd900] transition-colors"
             >
               サービス
             </a>
             <a
               href="#how-it-works"
-              className="text-sm text-gray-600 hover:text-primary transition-colors"
+              className="text-sm font-bold text-[#0a0a0a] hover:text-[#ffd900] transition-colors"
             >
               使い方
             </a>
             <a
               href="#testimonials"
-              className="text-sm text-gray-600 hover:text-primary transition-colors"
+              className="text-sm font-bold text-[#0a0a0a] hover:text-[#ffd900] transition-colors"
             >
               お客様の声
             </a>
             <a
               href="#cta"
-              className="bg-primary text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-primary-dark transition-colors"
+              className="group inline-flex items-center gap-2 bg-[#0a0a0a] text-white px-6 py-3 text-sm font-black hover:bg-[#ffd900] hover:text-[#0a0a0a] transition-colors"
             >
               アプリをダウンロード
+              <svg
+                className="w-4 h-4 transition-transform group-hover:translate-x-0.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
             </a>
           </nav>
 
@@ -69,25 +68,16 @@ export default function Header() {
             aria-label="メニュー"
           >
             <svg
-              className="w-6 h-6 text-gray-700"
+              className="w-6 h-6 text-[#0a0a0a]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
+              strokeWidth={2.5}
             >
               {menuOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               )}
             </svg>
           </button>
@@ -95,38 +85,38 @@ export default function Header() {
       </div>
 
       {menuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-3">
+        <div className="md:hidden bg-white border-t border-black/10 px-4 py-4 space-y-3">
           <a
             href="#features"
-            className="block text-gray-600 hover:text-primary"
+            className="block font-bold text-[#0a0a0a] py-2"
             onClick={() => setMenuOpen(false)}
           >
             特徴
           </a>
           <a
             href="#services"
-            className="block text-gray-600 hover:text-primary"
+            className="block font-bold text-[#0a0a0a] py-2"
             onClick={() => setMenuOpen(false)}
           >
             サービス
           </a>
           <a
             href="#how-it-works"
-            className="block text-gray-600 hover:text-primary"
+            className="block font-bold text-[#0a0a0a] py-2"
             onClick={() => setMenuOpen(false)}
           >
             使い方
           </a>
           <a
             href="#testimonials"
-            className="block text-gray-600 hover:text-primary"
+            className="block font-bold text-[#0a0a0a] py-2"
             onClick={() => setMenuOpen(false)}
           >
             お客様の声
           </a>
           <a
             href="#cta"
-            className="block bg-primary text-white text-center px-5 py-2 rounded-full text-sm font-medium"
+            className="block bg-[#0a0a0a] text-white text-center px-5 py-3 text-sm font-black"
             onClick={() => setMenuOpen(false)}
           >
             アプリをダウンロード
