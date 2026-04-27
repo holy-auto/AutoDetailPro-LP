@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
 import { QUALITY_AUDIT } from '@/constants/business-rules';
+import { submitAuditResponse } from '@/lib/quality-audit';
 
 const SCORE_LABELS = ['', '悪い', 'やや不満', '普通', '良い', 'とても良い'];
 const SCORE_COLORS = ['', '#EF4444', '#F59E0B', '#94A3B8', '#3B82F6', '#22C55E'];
@@ -51,16 +52,29 @@ export default function QualityAuditScreen() {
       Alert.alert('未回答の項目があります', 'すべての項目を評価してください。');
       return;
     }
+    if (!auditId) {
+      Alert.alert('エラー', '調査IDが見つかりません');
+      return;
+    }
 
     setSubmitting(true);
-
-    // デモモード：実際のAPIコールの代わりにシミュレーション
-    setTimeout(() => {
-      const code = `AUDIT-${Date.now().toString(36).toUpperCase()}`;
-      setCouponCode(code);
+    try {
+      const result = await submitAuditResponse({
+        auditId,
+        scores,
+        comment: comment || undefined,
+      });
+      if (!result.success) {
+        Alert.alert('エラー', result.error ?? '送信に失敗しました');
+        return;
+      }
+      setCouponCode(result.data!.couponCode);
       setCompleted(true);
+    } catch {
+      Alert.alert('エラー', '送信に失敗しました。再度お試しください。');
+    } finally {
       setSubmitting(false);
-    }, 1500);
+    }
   };
 
   if (completed) {
