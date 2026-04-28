@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://autodetailpro.jp";
+import { SITE } from "@/data/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -8,9 +7,18 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/"],
+        disallow: ["/api/", "/_next/", "/admin/"],
+      },
+      {
+        userAgent: "Googlebot",
+        allow: "/",
+      },
+      {
+        userAgent: "Bingbot",
+        allow: "/",
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
+    sitemap: `${SITE.url}/sitemap.xml`,
+    host: SITE.url,
   };
 }

@@ -1,116 +1,160 @@
 const services = [
   {
-    num: "01",
-    name: "外装洗車",
-    nameEn: "EXTERIOR WASH",
-    description: "手洗いで丁寧に汚れを落とし、輝くボディへ仕上げます。",
-    price: "3,000",
+    name: "出張手洗い洗車",
+    nameEn: "Hand Wash",
+    description: "ピュアウォーターで丁寧に手洗い。ホイールも含めて隅々まで仕上げます。",
+    price: "3,980",
+    duration: "約45分",
+    tag: "人気No.1",
+    color: "#e6f4ff",
+    iconColor: "#0099e6",
   },
   {
-    num: "02",
-    name: "内装クリーニング",
-    nameEn: "INTERIOR CLEAN",
-    description: "シート、ダッシュボード、フロアを徹底的に清掃します。",
-    price: "5,000",
+    name: "出張内装クリーニング",
+    nameEn: "Interior Clean",
+    description: "シート・天井・ダッシュボード・フロアを徹底的にクリーニング。消臭・除菌込み。",
+    price: "6,980",
+    duration: "約90分",
+    color: "#e6fbf7",
+    iconColor: "#0a8f7c",
   },
   {
-    num: "03",
-    name: "コーティング",
-    nameEn: "COATING",
-    description: "ガラスコーティングで長期間、輝きとボディを保護します。",
-    price: "15,000",
+    name: "出張ガラスコーティング",
+    nameEn: "Glass Coating",
+    description: "プロ施工のガラスコーティング。最大3年間、艶と撥水を保ちます。",
+    price: "29,800",
+    duration: "約3時間",
+    tag: "おすすめ",
+    color: "#fff4e6",
+    iconColor: "#b36b00",
   },
   {
-    num: "04",
-    name: "ポリッシュ磨き",
-    nameEn: "POLISH",
-    description: "小傷やくすみを丁寧に磨き上げ、新車の輝きを復活させます。",
-    price: "10,000",
+    name: "出張ポリッシュ磨き",
+    nameEn: "Polish",
+    description: "小傷・くすみを丁寧に磨き上げ、新車のような輝きを復活させます。",
+    price: "12,800",
+    duration: "約2時間",
+    color: "#f0e6ff",
+    iconColor: "#6b46c1",
   },
   {
-    num: "05",
-    name: "フルディテイル",
-    nameEn: "FULL DETAIL",
-    description: "内外装をトータルケア。最高の仕上がりをお届けします。",
-    price: "25,000",
+    name: "フルディテイリング",
+    nameEn: "Full Detail",
+    description: "洗車・内装・磨き・コーティングをトータルケア。最高の仕上がりへ。",
+    price: "49,800",
+    duration: "約5時間",
+    color: "#ffe6ee",
+    iconColor: "#c41e60",
   },
   {
-    num: "06",
-    name: "エンジンルーム",
-    nameEn: "ENGINE ROOM",
-    description: "エンジン周りの汚れも丁寧にクリーニングします。",
-    price: "8,000",
+    name: "エンジンルーム洗浄",
+    nameEn: "Engine Bay",
+    description: "エンジン周りの油汚れ・ホコリを丁寧に洗浄。点検前にもおすすめです。",
+    price: "9,800",
+    duration: "約1時間",
+    color: "#e6f0ff",
+    iconColor: "#1e4dc4",
   },
 ];
 
 export default function Services() {
   return (
-    <section id="services" className="relative py-20 sm:py-32 bg-[#f5f5f5]">
+    <section
+      id="services"
+      aria-labelledby="services-heading"
+      className="py-20 sm:py-28 bg-white"
+    >
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
-        <div className="grid lg:grid-cols-12 gap-10 mb-16 items-end">
-          <div className="lg:col-span-7">
-            <p className="inline-block bg-[#0a0a0a] text-[#ffd900] text-xs font-black px-3 py-1.5 uppercase tracking-wider mb-6">
-              SERVICES / サービス
-            </p>
-            <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-[#0a0a0a]">
-              あなたの車に
-              <br />
-              <span className="bg-[#ffd900] px-2">最適</span>なサービスを。
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
+          <div>
+            <p className="section-label mb-4 inline-flex">Services</p>
+            <h2
+              id="services-heading"
+              className="text-3xl sm:text-4xl lg:text-[40px] font-bold text-[#0a2540] mb-3"
+            >
+              サービスメニュー
             </h2>
-          </div>
-          <div className="lg:col-span-5">
-            <p className="text-base lg:text-lg text-[#6b6b6b] leading-relaxed">
-              洗車からフルディテイルまで、6つのカテゴリから選べます。
-              料金はすべて明朗会計、追加料金は一切いただきません。
+            <p className="text-[15px] text-[#5a7090] leading-relaxed max-w-xl">
+              手洗い洗車から本格コーティングまで、6つの出張メニュー。
+              料金はすべて表示価格、追加請求は一切ありません。
             </p>
           </div>
+          <a href="#cta" className="btn-outline text-[14px] shrink-0">
+            すべてのメニューを見る
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-[#0a0a0a]">
+        <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {services.map((service) => (
-            <div
-              key={service.num}
-              className="group relative bg-white p-8 hover:bg-[#0a0a0a] transition-colors cursor-pointer"
-            >
-              <div className="flex items-start justify-between mb-10">
-                <span className="text-sm font-black text-[#0a0a0a] group-hover:text-[#ffd900] transition-colors tracking-wider">
-                  {service.num}
-                </span>
-                <span className="text-xs font-bold text-[#0a0a0a]/40 group-hover:text-white/40 transition-colors tracking-widest">
-                  {service.nameEn}
-                </span>
-              </div>
-              <h3 className="text-2xl lg:text-3xl font-black text-[#0a0a0a] group-hover:text-white mb-3 transition-colors">
-                {service.name}
-              </h3>
-              <p className="text-sm text-[#0a0a0a]/70 group-hover:text-white/70 mb-8 leading-relaxed transition-colors">
-                {service.description}
-              </p>
-              <div className="flex items-end justify-between pt-6 border-t border-[#0a0a0a]/10 group-hover:border-white/20 transition-colors">
-                <div>
-                  <p className="text-[10px] font-bold text-[#0a0a0a]/50 group-hover:text-white/50 transition-colors mb-1">
-                    料金
-                  </p>
-                  <p className="text-2xl font-black text-[#0a0a0a] group-hover:text-[#ffd900] transition-colors">
-                    ¥{service.price}
-                    <span className="text-xs ml-1 font-bold">〜</span>
-                  </p>
-                </div>
-                <div className="w-10 h-10 bg-[#ffd900] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <li key={service.name}>
+              <a
+                href="#cta"
+                className="soft-card p-7 block h-full bg-white relative group"
+              >
+                {service.tag && (
+                  <span className="absolute top-5 right-5 bg-[#0099e6] text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+                    {service.tag}
+                  </span>
+                )}
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+                  style={{ background: service.color }}
+                >
                   <svg
-                    className="w-5 h-5 text-[#0a0a0a]"
+                    className="w-6 h-6"
+                    style={{ color: service.iconColor }}
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth={3}
+                    strokeWidth={2}
+                    aria-hidden="true"
                   >
-                    <path d="M5 12h14M13 6l6 6-6 6" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                   </svg>
                 </div>
-              </div>
-            </div>
+                <p className="text-[11px] font-bold text-[#8ba0ba] tracking-widest mb-1.5">
+                  {service.nameEn}
+                </p>
+                <h3 className="text-lg lg:text-xl font-bold text-[#0a2540] mb-3 leading-snug">
+                  {service.name}
+                </h3>
+                <p className="text-[13px] text-[#5a7090] mb-6 leading-relaxed min-h-[60px]">
+                  {service.description}
+                </p>
+                <div className="flex items-end justify-between pt-5 border-t border-[#e4eef7]">
+                  <div>
+                    <p className="text-[11px] font-medium text-[#8ba0ba] mb-1">
+                      {service.duration}
+                    </p>
+                    <p className="text-2xl font-bold text-[#0a2540] leading-none">
+                      ¥{service.price}
+                      <span className="text-xs ml-1 text-[#5a7090] font-medium">〜</span>
+                    </p>
+                  </div>
+                  <span className="w-9 h-9 rounded-full bg-[#f0f9ff] group-hover:bg-[#0099e6] flex items-center justify-center transition-colors">
+                    <svg
+                      className="w-4 h-4 text-[#0099e6] group-hover:text-white transition-colors"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                      aria-hidden="true"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </div>
+              </a>
+            </li>
           ))}
-        </div>
+        </ul>
+
+        <p className="text-center text-[12px] text-[#8ba0ba] mt-8">
+          ※ 表示価格は普通車（Mサイズ）の目安です。車種・サイズ・状態により変動する場合があります。
+        </p>
       </div>
     </section>
   );

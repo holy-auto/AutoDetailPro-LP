@@ -1,21 +1,27 @@
 const testimonials = [
   {
     name: "佐藤 美咲",
-    role: "東京都渋谷区",
+    role: "東京都渋谷区 / 30代女性",
+    car: "トヨタ ヤリス",
+    service: "出張手洗い洗車",
     rating: 5,
-    text: "仕事帰りにサクッと予約できて、翌日にはピカピカになってました。忙しい方におすすめ！",
+    text: "マンションの駐車場に来てもらえるなんて、革命でした。仕事から帰ってきたら愛車がピカピカ。月1回の定額プランで習慣化しています。",
   },
   {
     name: "山田 太郎",
-    role: "神奈川県横浜市",
+    role: "神奈川県横浜市 / 40代男性",
+    car: "BMW 3シリーズ",
+    service: "出張ガラスコーティング",
     rating: 5,
-    text: "コーティングをお願いしました。プロの技術が素晴らしく、新車のような輝きに感動しました。",
+    text: "ディーラーで20万円と言われたコーティングが、MobileWash なら3万円台。仕上がりは新車以上。プロの腕前に感動しました。",
   },
   {
     name: "鈴木 健一",
-    role: "埼玉県さいたま市",
+    role: "埼玉県さいたま市 / 30代パパ",
+    car: "ホンダ ステップワゴン",
+    service: "出張内装クリーニング",
     rating: 5,
-    text: "子供の食べこぼしで汚れた内装が見違えるほど綺麗に。今では定期的に利用しています。",
+    text: "子供の食べこぼしで悲惨だった内装が見違えるほど綺麗に。シートの匂いも消えて、家族みんな驚いていました。",
   },
 ];
 
@@ -25,42 +31,49 @@ export default function Testimonials() {
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <div className="grid lg:grid-cols-12 gap-10 mb-16 items-end">
           <div className="lg:col-span-7">
-            <p className="inline-block bg-[#0a0a0a] text-[#ffd900] text-xs font-black px-3 py-1.5 uppercase tracking-wider mb-6">
+            <p className="text-[11px] font-bold tracking-[0.3em] text-[#0a2540]/50 uppercase mb-4">
               VOICE / お客様の声
             </p>
-            <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-[#0a0a0a]">
+            <h2 className="heading-tight text-4xl sm:text-5xl lg:text-6xl font-black text-[#0a2540]">
               選ばれている、
               <br />
-              <span className="bg-[#ffd900] px-2">確かな</span>理由。
+              <span className="bg-[#00b4ff] px-2">確かな</span>理由。
             </h2>
           </div>
           <div className="lg:col-span-5">
-            <p className="text-base lg:text-lg text-[#6b6b6b] leading-relaxed">
+            <p className="text-base lg:text-lg text-[#0a2540]/65 leading-relaxed">
               ご利用いただいたお客様から、たくさんのご好評をいただいています。
               リアルな声をぜひご覧ください。
             </p>
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {testimonials.map((t, idx) => (
             <div
               key={t.name}
-              className="relative bg-white border-2 border-[#0a0a0a] p-8 hover:bg-[#0a0a0a] hover:text-white transition-colors group"
+              className="relative bg-white border-2 border-[#0a2540] rounded-3xl p-8 hover:bg-[#0a2540] hover:text-white transition-colors group"
             >
-              <span className="absolute top-4 right-6 text-7xl font-black text-[#ffd900] leading-none">
+              <span className="absolute top-4 right-7 text-7xl font-black text-[#00b4ff] leading-none">
                 &ldquo;
               </span>
 
               <div className="relative">
-                <p className="text-xs font-black text-[#0a0a0a] group-hover:text-[#ffd900] transition-colors mb-6 tracking-wider">
-                  CASE / {String(idx + 1).padStart(2, "0")}
-                </p>
-                <div className="flex items-center gap-1 mb-6">
+                <div className="flex items-center justify-between mb-5">
+                  <p className="text-xs font-black text-[#0a2540] group-hover:text-[#00b4ff] transition-colors tracking-wider">
+                    CASE / {String(idx + 1).padStart(2, "0")}
+                  </p>
+                </div>
+
+                <div className="inline-flex items-center gap-2 bg-[#00b4ff] text-[#0a2540] text-[10px] font-black px-2.5 py-1 rounded-full mb-4">
+                  {t.service}
+                </div>
+
+                <div className="flex items-center gap-1 mb-5">
                   {Array.from({ length: t.rating }).map((_, i) => (
                     <svg
                       key={i}
-                      className="w-5 h-5 text-[#ffd900]"
+                      className="w-4 h-4 text-[#00b4ff]"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -68,21 +81,21 @@ export default function Testimonials() {
                     </svg>
                   ))}
                 </div>
-                <p className="font-bold text-[#0a0a0a] group-hover:text-white text-base leading-relaxed mb-8 transition-colors">
+                <p className="font-bold text-[#0a2540] group-hover:text-white text-base leading-relaxed mb-8 transition-colors">
                   {t.text}
                 </p>
-                <div className="flex items-center gap-3 pt-6 border-t border-[#0a0a0a]/10 group-hover:border-white/20 transition-colors">
-                  <div className="w-10 h-10 bg-[#ffd900] flex items-center justify-center">
-                    <span className="text-[#0a0a0a] font-black text-base">
+                <div className="flex items-center gap-3 pt-6 border-t border-[#0a2540]/10 group-hover:border-white/20 transition-colors">
+                  <div className="w-11 h-11 bg-[#00b4ff] rounded-full flex items-center justify-center">
+                    <span className="text-[#0a2540] font-black text-base">
                       {t.name.charAt(0)}
                     </span>
                   </div>
-                  <div>
-                    <p className="font-black text-[#0a0a0a] group-hover:text-white text-sm transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-[#0a2540] group-hover:text-white text-sm transition-colors">
                       {t.name}
                     </p>
-                    <p className="text-[#6b6b6b] group-hover:text-white/60 text-xs transition-colors">
-                      {t.role}
+                    <p className="text-[#0a2540]/60 group-hover:text-white/60 text-[11px] transition-colors truncate">
+                      {t.role} ・ {t.car}
                     </p>
                   </div>
                 </div>
