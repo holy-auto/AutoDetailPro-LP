@@ -50,8 +50,57 @@ export async function signInWithApple() {
     nonce: rawNonce,
   });
 
-  if (error) throw new AuthError(error.message, 'SUPABASE_SIGNIN_FAILED');
+  if (error) {
+    if (__DEV__) {
+      console.error('[auth] Apple signInWithIdToken error', {
+        message: error.message,
+        status: (error as { status?: number }).status,
+        name: error.name,
+      });
+    }
+    throw new AuthError(translateAppleError(error.message), 'SUPABASE_SIGNIN_FAILED');
+  }
   return data;
+}
+
+function translateAppleError(message: string): string {
+  const m = message.toLowerCase();
+  // Supabase が bundle ID を Apple provider の Authorized Client IDs に
+  // 登録していないケース。最頻出。
+  if (m.includes('audience') || m.includes('client_id') || m.includes('aud')) {
+    return [
+      'Apple identity token の audience が拒否されました。',
+      '',
+      'Supabase Dashboard > Authentication > Providers > Apple の',
+      '"Authorized Client IDs" に「com.mobilewash.app」を追加してください。',
+      '',
+      `(原因: ${message})`,
+    ].join('\n');
+  }
+  if (m.includes('provider is not enabled') || m.includes('not enabled')) {
+    return [
+      'Supabase 側で Apple プロバイダが有効化されていません。',
+      'Supabase Dashboard > Authentication > Providers > Apple を有効にしてください。',
+      '',
+      `(原因: ${message})`,
+    ].join('\n');
+  }
+  if (m.includes('secret') || m.includes('jwt') || m.includes('signing')) {
+    return [
+      'Apple secret key が無効か期限切れです (6ヶ月で失効)。',
+      'Apple Developer の .p8 から JWT を再生成し、Supabase Dashboard に登録してください。',
+      '',
+      `(原因: ${message})`,
+    ].join('\n');
+  }
+  if (m.includes('nonce')) {
+    return [
+      'Apple nonce 検証に失敗しました。アプリを再起動して再度お試しください。',
+      '',
+      `(原因: ${message})`,
+    ].join('\n');
+  }
+  return `Apple サインインで Supabase が認証を拒否しました。\n\n(原因: ${message})`;
 }
 
 // Google Sign In (PKCE flow)
