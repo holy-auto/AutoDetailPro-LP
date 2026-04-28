@@ -1,164 +1,207 @@
-export default function Hero() {
-  return (
-    <section className="relative pt-24 lg:pt-28 pb-0 overflow-hidden bg-[#0a0a0a]">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-[#ffd900] rounded-full opacity-20 blur-3xl" />
-        <div className="absolute top-40 -left-20 w-[400px] h-[400px] bg-[#ffd900] rounded-full opacity-10 blur-3xl" />
-      </div>
+import LiveCounter from "@/components/LiveCounter";
+import { getSiteStats } from "@/lib/stats";
 
-      <div className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 pt-12 lg:pt-20">
-        <div className="grid lg:grid-cols-12 gap-10 items-center pb-16 lg:pb-24">
-          <div className="lg:col-span-7 text-white">
-            <div className="inline-flex items-center gap-2 bg-[#ffd900] text-[#0a0a0a] text-xs sm:text-sm font-black px-3 py-1.5 mb-8 uppercase tracking-wide">
-              <span className="w-1.5 h-1.5 bg-[#0a0a0a] rounded-full animate-pulse" />
-              出張カーディテイリングNo.1
-            </div>
-            <h1 className="heading-tight text-5xl sm:text-6xl lg:text-[80px] xl:text-[96px] font-black mb-8">
-              プロが、
+export const revalidate = 120;
+
+export default async function Hero() {
+  const stats = await getSiteStats();
+
+  return (
+    <section
+      aria-labelledby="hero-heading"
+      className="relative bg-white pt-10 lg:pt-14 pb-16 lg:pb-24 overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-grid-soft opacity-60 pointer-events-none" />
+      <div className="absolute -top-32 -right-32 w-[480px] h-[480px] bg-[#e6f4ff] rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-40 -left-40 w-[420px] h-[420px] bg-[#e6fbf7] rounded-full blur-3xl pointer-events-none" />
+
+      <div className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+        <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+          <div className="lg:col-span-6">
+            <span className="tag-pill mb-6">
+              <span className="w-1.5 h-1.5 bg-[#0099e6] rounded-full" />
+              出張洗車アプリ / {stats.launchTarget} 正式ローンチ予定
+            </span>
+            <h1
+              id="hero-heading"
+              className="heading-tight text-[40px] sm:text-5xl lg:text-[58px] xl:text-[64px] font-bold text-[#0a2540] mb-6"
+            >
+              <span className="text-[#0099e6]">出張洗車</span>を、
               <br />
-              <span className="relative inline-block">
-                今すぐ
-                <span className="absolute -bottom-2 left-0 right-0 h-3 bg-[#ffd900] -z-0 opacity-90" />
-                <span className="relative">出張</span>
-              </span>
-              。
+              呼ぶ時代へ。
             </h1>
-            <p className="text-base sm:text-lg lg:text-xl text-white/80 mb-10 max-w-xl leading-relaxed">
-              GPSで近くのプロを呼ぶ、出張カーディテイリングアプリ。
-              <br className="hidden sm:inline" />
-              洗車・コーティング・内装、スマホひとつで最短5分。
+            <p className="text-[15px] sm:text-base lg:text-lg text-[#5a7090] leading-relaxed mb-10 max-w-xl">
+              MobileWash は、<strong className="text-[#0a2540] font-bold">出張洗車・出張コーティング</strong>
+              のプロをスマホひとつで呼べるカーディテイリングアプリ。
+              GPSで近くの認定プロを自動マッチングし、ご自宅やマンションの駐車場へ
+              <strong className="text-[#0a2540] font-bold">最短5分で出張</strong>します。
+              洗車に行く時間がない方、駐車場で水が使えない方も、出張プロが解決します。
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 mb-12">
-              <a
-                href="#cta"
-                className="group inline-flex items-center justify-center gap-2 bg-[#ffd900] text-[#0a0a0a] font-black px-8 py-4 text-base hover:bg-white transition-colors"
-              >
-                アプリを無料ダウンロード
-                <svg
-                  className="w-5 h-5 transition-transform group-hover:translate-x-1"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={3}
-                >
-                  <path d="M5 12h14M13 6l6 6-6 6" />
+
+            <div className="flex flex-col sm:flex-row gap-3 mb-10">
+              <a href="#cta" className="btn-primary text-[15px] px-7">
+                先行登録する
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </a>
-              <a
-                href="#how-it-works"
-                className="inline-flex items-center justify-center gap-2 bg-transparent text-white font-bold px-8 py-4 text-base border border-white/30 hover:bg-white/10 transition-colors"
-              >
-                使い方を見る
+              <a href="#how-it-works" className="btn-outline text-[15px] px-7">
+                サービスを見る
               </a>
             </div>
 
-            <div className="flex flex-wrap items-center gap-6 lg:gap-10 pt-8 border-t border-white/10">
+            <dl className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-7 border-t border-[#e4eef7]">
               <div>
-                <p className="text-3xl lg:text-4xl font-black text-[#ffd900]">10,000+</p>
-                <p className="text-xs text-white/60 mt-1">累計予約数</p>
+                <dt className="text-[11px] text-[#8ba0ba] font-bold tracking-widest mb-1 inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-[#0a8f7c] rounded-full animate-pulse" />
+                  事前登録者数
+                </dt>
+                <dd className="text-2xl lg:text-[28px] font-bold text-[#0a2540] leading-none tabular-nums">
+                  <LiveCounter target={stats.waitlist} />
+                  <span className="text-sm text-[#0099e6] ml-1 font-bold">名</span>
+                </dd>
               </div>
+              <div className="w-px h-9 bg-[#e4eef7]" />
               <div>
-                <p className="text-3xl lg:text-4xl font-black text-[#ffd900]">4.8</p>
-                <p className="text-xs text-white/60 mt-1">平均評価 ★</p>
+                <dt className="text-[11px] text-[#8ba0ba] font-bold tracking-widest mb-1 inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-[#0a8f7c] rounded-full animate-pulse" />
+                  認定プロ登録数
+                </dt>
+                <dd className="text-2xl lg:text-[28px] font-bold text-[#0a2540] leading-none tabular-nums">
+                  <LiveCounter target={stats.pros} />
+                  <span className="text-sm text-[#0099e6] ml-1 font-bold">名</span>
+                </dd>
               </div>
+              <div className="w-px h-9 bg-[#e4eef7]" />
               <div>
-                <p className="text-3xl lg:text-4xl font-black text-[#ffd900]">5<span className="text-xl">分</span></p>
-                <p className="text-xs text-white/60 mt-1">最短到着時間</p>
+                <dt className="text-[11px] text-[#8ba0ba] font-bold tracking-widest mb-1">
+                  ローンチ予定
+                </dt>
+                <dd className="text-2xl lg:text-[28px] font-bold text-[#0a2540] leading-none">
+                  {stats.launchTarget}
+                </dd>
               </div>
-            </div>
+            </dl>
           </div>
 
-          <div className="lg:col-span-5 flex justify-center lg:justify-end">
+          <div className="lg:col-span-6 flex justify-center lg:justify-end">
             <div className="relative">
-              <div className="absolute -inset-6 bg-[#ffd900] -rotate-3" />
-              <div className="relative w-[280px] h-[560px] bg-[#0a0a0a] rounded-[3rem] p-3 shadow-2xl">
-                <div className="w-full h-full bg-white rounded-[2.3rem] overflow-hidden relative">
-                  <div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-2">
-                    <div className="w-7 h-7 bg-[#ffd900] flex items-center justify-center">
-                      <span className="text-[#0a0a0a] font-black text-[10px] tracking-tighter">ADP</span>
+              <div className="absolute -top-8 -left-10 bg-white soft-shadow-lg rounded-2xl px-4 py-3 z-20 hidden sm:block">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 bg-[#e6f4ff] rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-[#0099e6]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#8ba0ba] font-bold leading-tight">プロが向かいます（イメージ）</p>
+                    <p className="text-[13px] font-bold text-[#0a2540] leading-tight mt-0.5">最短5分で出張</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="absolute -bottom-4 -right-4 bg-white soft-shadow-lg rounded-2xl px-4 py-3 z-20 hidden sm:block">
+                <p className="text-[10px] text-[#8ba0ba] font-bold leading-tight">先行登録特典</p>
+                <p className="text-base font-bold text-[#0099e6] leading-tight mt-0.5">¥1,000 OFF</p>
+              </div>
+
+              <div className="relative w-[260px] sm:w-[300px] h-[540px] sm:h-[600px] bg-gradient-to-b from-[#0a2540] to-[#1a3658] rounded-[2.5rem] p-3 soft-shadow-lg">
+                <div className="w-full h-full bg-white rounded-[2rem] overflow-hidden relative">
+                  <div className="bg-white border-b border-[#e4eef7] px-4 py-3 flex items-center gap-2">
+                    <div className="logo-mark w-6 h-6 rounded-full flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M5 11l1.5-4.5A2 2 0 018.4 5h7.2a2 2 0 011.9 1.5L19 11h.5a1.5 1.5 0 011.5 1.5V17a1 1 0 01-1 1h-1a1 1 0 01-1-1v-1H6v1a1 1 0 01-1 1H4a1 1 0 01-1-1v-4.5A1.5 1.5 0 014.5 11H5z" />
+                      </svg>
                     </div>
-                    <span className="text-white font-black text-sm">Auto Detail Pro</span>
-                  </div>
-
-                  <div className="bg-[#0a0a0a] px-4 pt-2 pb-6">
-                    <span className="text-[10px] text-[#0a0a0a] bg-[#ffd900] px-2 py-0.5 font-black">
-                      GPSで近くのプロを検索
+                    <span className="text-[#0a2540] font-bold text-[13px]">MobileWash</span>
+                    <span className="ml-auto text-[9px] font-bold text-[#0a8f7c] bg-[#e6fbf7] px-1.5 py-0.5 rounded-full">
+                      β
                     </span>
-                    <p className="text-white font-black text-xl mt-3 leading-tight">プロが、</p>
-                    <p className="text-[#ffd900] font-black text-xl leading-tight">今すぐ出張。</p>
                   </div>
 
-                  <div className="px-3 -mt-3">
-                    <div className="bg-white rounded-xl shadow-md border border-black/5 p-3 mb-3">
-                      <p className="text-[10px] text-gray-500 mb-1.5 font-bold">サービスカテゴリ</p>
-                      <div className="flex gap-2 justify-between">
-                        {["外装", "内装", "コート", "磨き"].map((s) => (
-                          <div key={s} className="flex flex-col items-center gap-1 flex-1">
-                            <div className="w-9 h-9 bg-[#ffd900] flex items-center justify-center">
-                              <div className="w-3 h-3 bg-[#0a0a0a] rounded-full" />
+                  <div className="px-4 pt-4 pb-3 bg-gradient-to-b from-[#f0f9ff] to-white">
+                    <p className="text-[11px] text-[#8ba0ba] font-bold mb-1">画面イメージ</p>
+                    <p className="text-[#0a2540] font-bold text-base leading-tight">
+                      今日も愛車を、
+                      <br />
+                      <span className="text-[#0099e6]">ピカピカ</span>に。
+                    </p>
+                  </div>
+
+                  <div className="px-3">
+                    <div className="bg-white rounded-2xl border border-[#e4eef7] p-3 mb-3">
+                      <p className="text-[10px] text-[#8ba0ba] mb-2 font-bold">サービスメニュー</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { name: "手洗い", color: "#e6f4ff" },
+                          { name: "内装", color: "#e6fbf7" },
+                          { name: "コート", color: "#fff4e6" },
+                          { name: "磨き", color: "#f0e6ff" },
+                        ].map((s) => (
+                          <div key={s.name} className="flex flex-col items-center gap-1">
+                            <div
+                              className="w-9 h-9 rounded-xl flex items-center justify-center"
+                              style={{ background: s.color }}
+                            >
+                              <div className="w-3 h-3 bg-[#0099e6] rounded-full" />
                             </div>
-                            <span className="text-[8px] text-gray-700 font-bold">{s}</span>
+                            <span className="text-[8px] text-[#5a7090] font-medium">{s.name}</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <p className="text-[10px] text-gray-500 mb-2 font-bold">近くのオンラインプロ</p>
+                    <p className="text-[10px] text-[#8ba0ba] mb-2 font-bold">
+                      近くの出張プロ <span className="text-[#0a8f7c]">（β版イメージ）</span>
+                    </p>
                     {[
-                      { name: "田中 健太", rating: "4.9", time: "5分" },
-                      { name: "鈴木 大輔", rating: "4.7", time: "7分" },
+                      { name: "プロA", time: "5分" },
+                      { name: "プロB", time: "7分" },
                     ].map((pro) => (
                       <div
                         key={pro.name}
-                        className="bg-white border border-black/10 p-2.5 mb-2 flex items-center justify-between"
+                        className="bg-white border border-[#e4eef7] rounded-xl p-2.5 mb-2 flex items-center justify-between"
                       >
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 bg-[#e6f4ff] rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-[#0099e6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                           </div>
                           <div>
-                            <p className="text-[11px] font-black text-[#0a0a0a]">{pro.name}</p>
-                            <p className="text-[9px] text-yellow-600 font-bold">★ {pro.rating}</p>
+                            <p className="text-[11px] font-bold text-[#0a2540]">{pro.name}</p>
+                            <p className="text-[9px] text-[#5a7090]">レビュー準備中</p>
                           </div>
                         </div>
-                        <span className="text-[9px] text-[#0a0a0a] font-black bg-[#ffd900] px-2 py-1">
+                        <span className="text-[10px] text-[#0099e6] font-bold bg-[#e6f4ff] px-2 py-0.5 rounded-full">
                           約{pro.time}
                         </span>
                       </div>
                     ))}
                   </div>
 
-                  <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-black/10 flex justify-around py-2">
-                    {["ホーム", "検索", "♥", "予約"].map((item) => (
-                      <span key={item} className="text-[9px] text-gray-500 font-bold">{item}</span>
+                  <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#e4eef7] flex justify-around py-2.5">
+                    {[
+                      { label: "ホーム", active: true },
+                      { label: "予約", active: false },
+                      { label: "履歴", active: false },
+                      { label: "設定", active: false },
+                    ].map((item) => (
+                      <span
+                        key={item.label}
+                        className={`text-[9px] font-bold ${
+                          item.active ? "text-[#0099e6]" : "text-[#8ba0ba]"
+                        }`}
+                      >
+                        {item.label}
+                      </span>
                     ))}
                   </div>
                 </div>
               </div>
-
-              <div className="absolute -bottom-6 -left-8 bg-white text-[#0a0a0a] px-4 py-3 shadow-xl">
-                <p className="text-[10px] font-bold text-gray-500">ダウンロード</p>
-                <p className="text-2xl font-black leading-none">無料</p>
-              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="relative bg-[#ffd900] overflow-hidden border-y-2 border-[#0a0a0a]">
-        <div className="marquee-track py-4 whitespace-nowrap">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-10 pr-10 text-[#0a0a0a] font-black text-lg uppercase tracking-wider">
-              <span>★ 出張カーディテイリング</span>
-              <span>★ 最短5分で到着</span>
-              <span>★ 認定プロのみ</span>
-              <span>★ アプリで簡単予約</span>
-              <span>★ 全国対応エリア拡大中</span>
-              <span>★ GPSで近くのプロを検索</span>
-            </div>
-          ))}
         </div>
       </div>
     </section>
