@@ -7,10 +7,10 @@ const ExpoSecureStoreAdapter = {
     return SecureStore.getItemAsync(key);
   },
   setItem: (key: string, value: string) => {
-    SecureStore.setItemAsync(key, value);
+    return SecureStore.setItemAsync(key, value);
   },
   removeItem: (key: string) => {
-    SecureStore.deleteItemAsync(key);
+    return SecureStore.deleteItemAsync(key);
   },
 };
 
@@ -54,19 +54,25 @@ export const supabase: SupabaseClient = isSupabaseConfigured
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
+        flowType: 'pkce',
       },
     })
   : (new Proxy({} as any, {
       get: (_target, prop) => {
         // Return no-op stubs so the app doesn't crash in demo mode
         if (prop === 'auth') {
+          const demoError = { message: 'Supabase が未設定です (デモモード)' };
           return {
             getSession: async () => ({ data: { session: null }, error: null }),
+            getUser: async () => ({ data: { user: null }, error: null }),
             onAuthStateChange: () => ({
               data: { subscription: { unsubscribe: () => {} } },
             }),
-            signInWithIdToken: async () => ({ data: null, error: { message: 'Demo mode' } }),
-            signOut: async () => {},
+            signInWithIdToken: async () => ({ data: null, error: demoError }),
+            signInWithOAuth: async () => ({ data: null, error: demoError }),
+            exchangeCodeForSession: async () => ({ data: null, error: demoError }),
+            setSession: async () => ({ data: null, error: demoError }),
+            signOut: async () => ({ error: null }),
           };
         }
         if (prop === 'from') {

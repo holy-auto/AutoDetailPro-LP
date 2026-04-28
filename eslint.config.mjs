@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // mobile/ is a separate React Native project, lint it from its own config.
+    "mobile/**",
   ]),
 ]);
 

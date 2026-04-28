@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 const ALLOWED_AREAS = [
   "hokkaido", "aomori", "iwate", "miyagi", "akita", "yamagata", "fukushima",
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "経験年数が不正です" }, { status: 400 });
     }
 
+    const supabase = getSupabaseClient();
     const { error } = await supabase.from("pros").insert([
       {
         email,

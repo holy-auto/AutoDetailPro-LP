@@ -315,12 +315,36 @@ CREATE TABLE disputes (
   resolved_by UUID REFERENCES profiles(id),
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  resolved_at TIMESTAMPTZ,
-  -- Must be within 24h of completion
-  CONSTRAINT dispute_within_24h CHECK (
-    created_at <= (SELECT COALESCE(completed_at, auto_completed_at, NOW()) + INTERVAL '24 hours' FROM orders WHERE id = order_id)
-  )
+  resolved_at TIMESTAMPTZ
 );
+
+-- Disputes must be filed within 24h of order completion.
+-- (PostgreSQL does not allow subqueries in CHECK constraints, so use a trigger.)
+CREATE OR REPLACE FUNCTION enforce_dispute_within_24h()
+RETURNS TRIGGER AS $$
+DECLARE
+  deadline TIMESTAMPTZ;
+BEGIN
+  SELECT COALESCE(completed_at, auto_completed_at, NOW()) + INTERVAL '24 hours'
+    INTO deadline
+    FROM orders
+   WHERE id = NEW.order_id;
+
+  IF deadline IS NULL THEN
+    RAISE EXCEPTION 'Referenced order % not found', NEW.order_id;
+  END IF;
+
+  IF NEW.created_at > deadline THEN
+    RAISE EXCEPTION 'Dispute must be filed within 24 hours of order completion';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_disputes_within_24h
+  BEFORE INSERT ON disputes
+  FOR EACH ROW EXECUTE FUNCTION enforce_dispute_within_24h();
 
 ALTER TABLE disputes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Customers can view own disputes" ON disputes FOR SELECT USING (auth.uid() = customer_id);

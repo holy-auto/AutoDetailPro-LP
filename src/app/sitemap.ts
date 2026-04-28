@@ -56,5 +56,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: p.status === "active" ? 0.8 : 0.6,
   }));
 
-  return [...top, ...sections, ...guidePages, ...areaIndex, ...areaPages];
+  const legalPages: MetadataRoute.Sitemap = [
+    { url: `${SITE.url}/privacy`, lastModified, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE.url}/terms`, lastModified, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE.url}/tokushoho`, lastModified, changeFrequency: "yearly", priority: 0.3 },
+  ];
+
+  return [...top, ...sections, ...guidePages, ...areaIndex, ...areaPages, ...legalPages];
 }

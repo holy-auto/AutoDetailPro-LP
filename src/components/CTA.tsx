@@ -2,29 +2,53 @@
 
 import { useState } from "react";
 
+type Status = "idle" | "loading" | "success" | "duplicated" | "error";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function CTA() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<Status>("idle");
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    const value = email.trim();
+    if (!value) return;
+    if (!EMAIL_RE.test(value)) {
+      setStatus("error");
+      setErrorMessage("有効なメールアドレスを入力してください。");
+      return;
+    }
 
     setStatus("loading");
+    setErrorMessage("");
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: value }),
       });
+      const data = (await res.json().catch(() => null)) as
+        | { message?: string; error?: string; duplicated?: boolean }
+        | null;
+
       if (res.ok) {
-        setStatus("success");
+        setStatus(data?.duplicated ? "duplicated" : "success");
         setEmail("");
-      } else {
-        setStatus("error");
+        return;
       }
+
+      setStatus("error");
+      setErrorMessage(
+        data?.error ??
+          (res.status === 429
+            ? "リクエストが多すぎます。しばらくしてから再度お試しください。"
+            : "登録に失敗しました。時間をおいて再度お試しください。"),
+      );
     } catch {
       setStatus("error");
+      setErrorMessage("ネットワークエラーが発生しました。");
     }
   };
 
@@ -80,16 +104,30 @@ export default function CTA() {
                 </button>
               </form>
 
-              {status === "success" && (
-                <p className="text-[#0a8f7c] text-[13px] font-medium" role="status">
-                  ✓ 登録ありがとうございます。リリース時にお知らせします。
-                </p>
-              )}
-              {status === "error" && (
-                <p className="text-[#c41e60] text-[13px] font-medium" role="alert">
-                  エラーが発生しました。もう一度お試しください。
-                </p>
-              )}
+              <p role="status" aria-live="polite" className="min-h-[1.25rem]">
+                {status === "success" && (
+                  <span className="text-[#0a8f7c] text-[13px] font-medium">
+                    ✓ 登録ありがとうございます。リリース時にお知らせします。
+                  </span>
+                )}
+                {status === "duplicated" && (
+                  <span className="text-[#0a8f7c] text-[13px] font-medium">
+                    ✓ 既にご登録済みです。リリースまでお待ちください。
+                  </span>
+                )}
+                {status === "error" && (
+                  <span className="text-[#c41e60] text-[13px] font-medium">
+                    {errorMessage}
+                  </span>
+                )}
+              </p>
+              <p className="text-[11px] text-[#5a7090] mt-2">
+                送信により
+                <a href="/privacy" className="underline font-medium hover:text-[#0099e6]">
+                  プライバシーポリシー
+                </a>
+                に同意したものとみなします。
+              </p>
 
               <div className="flex flex-wrap gap-3 mt-8">
                 <a
