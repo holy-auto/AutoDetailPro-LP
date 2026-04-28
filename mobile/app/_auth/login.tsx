@@ -10,22 +10,47 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
-import { signInWithApple, signInWithGoogle } from '@/lib/auth';
+import { signInWithApple, signInWithGoogle, AuthError } from '@/lib/auth';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState<'apple' | 'google' | null>(null);
 
+  const handleError = (error: unknown, provider: 'Apple' | 'Google') => {
+    // User-cancelled flows: silently ignore.
+    if (error && typeof error === 'object') {
+      const e = error as { code?: string; message?: string };
+      if (
+        e.code === 'ERR_REQUEST_CANCELED' ||
+        e.code === 'CANCELLED' ||
+        e.message === 'Google Sign In was cancelled'
+      ) {
+        return;
+      }
+    }
+
+    const message =
+      error instanceof AuthError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : `${provider} サインインに失敗しました。再度お試しください。`;
+
+    if (__DEV__) {
+      console.error(`[auth] ${provider} sign-in failed`, error);
+    }
+    Alert.alert(`${provider} サインインエラー`, message);
+  };
+
   const handleAppleSignIn = async () => {
     try {
       setLoading('apple');
       await signInWithApple();
-    } catch (error: any) {
-      if (error.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('エラー', 'Apple サインインに失敗しました。再度お試しください。');
-      }
+    } catch (error) {
+      handleError(error, 'Apple');
     } finally {
       setLoading(null);
     }
@@ -35,10 +60,8 @@ export default function LoginScreen() {
     try {
       setLoading('google');
       await signInWithGoogle();
-    } catch (error: any) {
-      if (error.message !== 'Google Sign In was cancelled') {
-        Alert.alert('エラー', 'Google サインインに失敗しました。再度お試しください。');
-      }
+    } catch (error) {
+      handleError(error, 'Google');
     } finally {
       setLoading(null);
     }
@@ -73,12 +96,21 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
+        {!isSupabaseConfigured && (
+          <View style={styles.warningBanner}>
+            <Ionicons name="warning-outline" size={18} color="#8a6d00" />
+            <Text style={styles.warningText}>
+              Supabase 環境変数が未設定です。EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY を設定してください。
+            </Text>
+          </View>
+        )}
+
         <View style={styles.buttonGroup}>
           {Platform.OS === 'ios' && (
             <TouchableOpacity
               style={[styles.authButton, styles.appleButton]}
               onPress={handleAppleSignIn}
-              disabled={loading !== null}
+              disabled={loading !== null || !isSupabaseConfigured}
               activeOpacity={0.8}
             >
               {loading === 'apple' ? (
@@ -97,7 +129,7 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={[styles.authButton, styles.googleButton]}
             onPress={handleGoogleSignIn}
-            disabled={loading !== null}
+            disabled={loading !== null || !isSupabaseConfigured}
             activeOpacity={0.8}
           >
             {loading === 'google' ? (
@@ -193,6 +225,23 @@ const styles = StyleSheet.create({
   },
   buttonGroup: {
     gap: Spacing.md,
+  },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    backgroundColor: '#FFF8DC',
+    borderColor: '#E0C97A',
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: '#8a6d00',
+    lineHeight: 18,
   },
   authButton: {
     flexDirection: 'row',
