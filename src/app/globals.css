@@ -55,7 +55,8 @@ html {
 h1, h2, h3, h4, h5 {
   letter-spacing: -0.01em;
   line-height: 1.3;
-  color: var(--foreground);
+  /* color is inherited from parent so dark-bg sections (text-white) work.
+     Use text-[#0a2540] explicitly on light-bg headings. */
 }
 
 .heading-tight {

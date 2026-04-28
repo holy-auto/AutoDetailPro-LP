@@ -100,7 +100,13 @@ export default function Plans() {
               >
                 {plan.nameEn}
               </p>
-              <h3 className="text-2xl font-bold mb-3">{plan.name}</h3>
+              <h3
+                className={`text-2xl font-bold mb-3 ${
+                  plan.accent ? "text-white" : "text-[#0a2540]"
+                }`}
+              >
+                {plan.name}
+              </h3>
               <p
                 className={`text-[13px] mb-7 leading-relaxed ${
                   plan.accent ? "text-white/70" : "text-[#5a7090]"

@@ -1,3 +1,5 @@
+import ProSignupForm from "@/components/ProSignupForm";
+
 const benefits = [
   {
     title: "好きな時間に好きな場所で",
@@ -25,97 +27,87 @@ export default function ProRecruit() {
       className="py-20 sm:py-28 bg-white"
     >
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
-        <div className="rounded-3xl bg-gradient-to-br from-[#0a2540] via-[#0e2d52] to-[#143a6b] text-white p-8 sm:p-12 lg:p-16 relative overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-[#00b4ff] rounded-full opacity-10 blur-3xl pointer-events-none" />
+        <div className="rounded-3xl bg-gradient-to-br from-[#0a2540] via-[#0e2d52] to-[#143a6b] p-8 sm:p-12 lg:p-14 relative overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-[#00b4ff] rounded-full opacity-15 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] bg-[#00d4b8] rounded-full opacity-10 blur-3xl pointer-events-none" />
 
-          <div className="relative grid lg:grid-cols-12 gap-10 items-center">
-            <div className="lg:col-span-7">
-              <p className="text-[11px] font-bold tracking-[0.25em] text-[#00b4ff] uppercase mb-4">
-                ── For Professionals
+          <div className="relative grid lg:grid-cols-12 gap-10 items-start">
+            <div className="lg:col-span-6 text-white">
+              <p className="inline-flex items-center gap-2 text-[11px] font-bold tracking-[0.25em] text-[#00b4ff] uppercase mb-4 bg-[#00b4ff]/10 px-3 py-1.5 rounded-full">
+                <span className="w-1.5 h-1.5 bg-[#00b4ff] rounded-full animate-pulse" />
+                For Professionals / プロ募集中
               </p>
               <h2
                 id="pro-heading"
-                className="heading-tight text-3xl sm:text-4xl lg:text-[44px] font-bold mb-5"
+                className="heading-tight text-3xl sm:text-4xl lg:text-[44px] font-bold mb-5 text-white"
               >
-                洗車・コーティングのプロを募集しています
+                洗車・コーティングの
+                <br />
+                <span className="text-[#00b4ff]">プロ</span>を募集しています
               </h2>
-              <p className="text-[15px] text-white/75 mb-10 leading-relaxed max-w-xl">
+              <p className="text-[15px] text-white/80 mb-8 leading-relaxed max-w-xl">
                 ディテイリングのスキルを、もっと自由に。もっと稼げる場所へ。
                 MobileWash は、出張型カーケアの新しい働き方を提案します。
+                正式ローンチに向けて、認定プロ第一期生を募集中です。
               </p>
 
-              <ul className="grid sm:grid-cols-2 gap-3 mb-10">
+              <ul className="grid sm:grid-cols-2 gap-3 mb-8">
                 {benefits.map((b) => (
                   <li
                     key={b.title}
-                    className="bg-white/5 border border-white/10 rounded-2xl p-5"
+                    className="bg-white/8 border border-white/15 backdrop-blur rounded-2xl p-5"
                   >
                     <h3 className="text-sm font-bold mb-1.5 text-white">
                       {b.title}
                     </h3>
-                    <p className="text-[12px] text-white/65 leading-relaxed">
+                    <p className="text-[12px] text-white/70 leading-relaxed">
                       {b.description}
                     </p>
                   </li>
                 ))}
               </ul>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <a
-                  href="#"
-                  className="inline-flex items-center justify-center gap-2 bg-white text-[#0a2540] font-bold px-7 py-3.5 rounded-full hover:bg-[#e6f4ff] transition-colors text-[14px]"
-                >
-                  プロ登録に申し込む
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </a>
-                <a
-                  href="#"
-                  className="inline-flex items-center justify-center gap-2 bg-transparent text-white font-bold px-7 py-3.5 rounded-full border border-white/30 hover:bg-white/10 transition-colors text-[14px]"
-                >
-                  資料ダウンロード
-                </a>
+              <div className="bg-white/8 border border-white/15 backdrop-blur rounded-2xl p-6 lg:p-7">
+                <div className="flex items-baseline justify-between mb-3">
+                  <p className="text-[10px] font-bold tracking-[0.25em] text-[#00b4ff] uppercase">
+                    Income Simulation
+                  </p>
+                  <span className="text-[10px] text-white/50">想定モデル</span>
+                </div>
+                <p className="heading-tight text-4xl lg:text-5xl font-bold text-white">
+                  ¥520,000
+                  <span className="text-base text-white/60 ml-2">/ 月</span>
+                </p>
+                <p className="text-[11px] text-white/60 mt-2 mb-4">
+                  ※ 週4日 / 1日3件 / 単価¥12,000 / 還元率90% の場合の試算例
+                </p>
+                <dl className="grid grid-cols-2 gap-2 text-[12px] pt-4 border-t border-white/15">
+                  <div className="flex justify-between">
+                    <dt className="text-white/60">稼働日数</dt>
+                    <dd className="font-bold text-white">16日 / 月</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-white/60">1日あたり</dt>
+                    <dd className="font-bold text-white">3件</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-white/60">平均単価</dt>
+                    <dd className="font-bold text-white">¥12,000</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-white/60">還元率</dt>
+                    <dd className="font-bold text-[#00b4ff]">90%</dd>
+                  </div>
+                </dl>
+                <div className="mt-4 pt-4 border-t border-white/15 flex items-center justify-between">
+                  <span className="text-[12px] text-white/60">登録金</span>
+                  <span className="text-base font-bold text-[#00b4ff]">¥0</span>
+                </div>
               </div>
             </div>
 
-            <div className="lg:col-span-5">
-              <div className="bg-white rounded-2xl p-7 lg:p-8 text-[#0a2540] soft-shadow-lg">
-                <p className="text-[10px] font-bold tracking-[0.25em] text-[#0099e6] uppercase mb-2">
-                  Example Income (Simulation)
-                </p>
-                <p className="text-sm font-bold mb-3 text-[#5a7090]">
-                  月収シミュレーション
-                </p>
-                <p className="heading-tight text-5xl lg:text-6xl font-bold mb-2 text-[#0a2540]">
-                  ¥520,000
-                </p>
-                <p className="text-[11px] text-[#8ba0ba] mb-6">
-                  ※ 想定モデル：週4日 / 1日3件 / 単価12,000円。実績ではなく試算例です。
-                </p>
-                <dl className="space-y-2.5 text-[13px] border-t border-[#e4eef7] pt-5">
-                  <div className="flex justify-between">
-                    <dt className="text-[#5a7090]">稼働日数</dt>
-                    <dd className="font-bold">16日 / 月</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-[#5a7090]">1日あたり</dt>
-                    <dd className="font-bold">3件</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-[#5a7090]">平均単価</dt>
-                    <dd className="font-bold">¥12,000</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-[#5a7090]">還元率</dt>
-                    <dd className="font-bold text-[#0099e6]">90%</dd>
-                  </div>
-                </dl>
-                <div className="mt-5 pt-5 border-t border-[#e4eef7] flex items-center justify-between">
-                  <span className="text-[12px] text-[#5a7090]">登録金</span>
-                  <span className="text-base font-bold text-[#0099e6]">¥0</span>
-                </div>
-              </div>
+            <div className="lg:col-span-6">
+              <ProSignupForm />
             </div>
           </div>
         </div>
