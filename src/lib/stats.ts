@@ -25,7 +25,7 @@ const DEFAULTS: SiteStats = {
 };
 
 export const INSTALLS_DISPLAY_THRESHOLD = Number(
-  process.env.STATS_INSTALLS_DISPLAY_MIN ?? 1000,
+  process.env.STATS_INSTALLS_DISPLAY_MIN ?? 10000,
 );
 
 export function shouldDisplayInstalls(installs: number): boolean {

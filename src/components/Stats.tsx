@@ -53,7 +53,7 @@ export default async function Stats() {
     },
   ];
 
-  // ダウンロード数は閾値（既定 1,000 件）を超えたタイミングで自動公開。
+  // ダウンロード数は閾値（既定 10,000 件）を超えたタイミングで自動公開。
   // 閾値は STATS_INSTALLS_DISPLAY_MIN 環境変数で調整可能。
   if (shouldDisplayInstalls(stats.appInstalls)) {
     items.push({
