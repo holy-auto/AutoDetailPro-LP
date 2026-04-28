@@ -4,6 +4,7 @@ export type SiteStats = {
   waitlist: number;
   pros: number;
   bookings: number;
+  appInstalls: number;
   prefecturesActive: number;
   prefecturesPlanned: number;
   isPreLaunch: boolean;
@@ -15,12 +16,21 @@ const DEFAULTS: SiteStats = {
   waitlist: 0,
   pros: 0,
   bookings: 0,
+  appInstalls: 0,
   prefecturesActive: 0,
   prefecturesPlanned: 47,
   isPreLaunch: true,
   launchTarget: "2026年Q3",
   fetchedAt: new Date(0).toISOString(),
 };
+
+export const INSTALLS_DISPLAY_THRESHOLD = Number(
+  process.env.STATS_INSTALLS_DISPLAY_MIN ?? 1000,
+);
+
+export function shouldDisplayInstalls(installs: number): boolean {
+  return installs >= INSTALLS_DISPLAY_THRESHOLD;
+}
 
 const isPlaceholder = (url?: string) =>
   !url || url.includes("placeholder") || url.includes("your-project");
@@ -54,10 +64,11 @@ export async function getSiteStats(): Promise<SiteStats> {
     const supabase = createClient(url, key, {
       auth: { persistSession: false },
     });
-    const [waitlist, pros, bookings] = await Promise.all([
+    const [waitlist, pros, bookings, appInstalls] = await Promise.all([
       safeCount(supabase, "waitlist"),
       safeCount(supabase, "pros"),
       safeCount(supabase, "bookings"),
+      safeCount(supabase, "app_installs"),
     ]);
 
     return {
@@ -65,6 +76,7 @@ export async function getSiteStats(): Promise<SiteStats> {
       waitlist,
       pros,
       bookings,
+      appInstalls,
       fetchedAt: new Date().toISOString(),
     };
   } catch {

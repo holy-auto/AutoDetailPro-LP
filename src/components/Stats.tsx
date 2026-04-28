@@ -1,5 +1,5 @@
 import LiveCounter from "@/components/LiveCounter";
-import { getSiteStats } from "@/lib/stats";
+import { getSiteStats, shouldDisplayInstalls } from "@/lib/stats";
 
 export const revalidate = 120;
 
@@ -14,7 +14,15 @@ export default async function Stats() {
     minute: "2-digit",
   });
 
-  const items = [
+  type StatItem = {
+    label: string;
+    hint: string;
+    value: number;
+    suffix: string;
+    live: boolean;
+  };
+
+  const items: StatItem[] = [
     {
       label: "事前登録者数",
       hint: "リリース時に¥1,000 OFFをお届け",
@@ -45,6 +53,23 @@ export default async function Stats() {
     },
   ];
 
+  // ダウンロード数は閾値（既定 1,000 件）を超えたタイミングで自動公開。
+  // 閾値は STATS_INSTALLS_DISPLAY_MIN 環境変数で調整可能。
+  if (shouldDisplayInstalls(stats.appInstalls)) {
+    items.push({
+      label: "アプリダウンロード数",
+      hint: "App Store / Google Play 合算",
+      value: stats.appInstalls,
+      suffix: "DL",
+      live: true,
+    });
+  }
+
+  const cols =
+    items.length >= 5
+      ? "grid-cols-2 lg:grid-cols-5"
+      : "grid-cols-2 lg:grid-cols-4";
+
   return (
     <section
       aria-label="数字で見るMobileWash"
@@ -61,7 +86,9 @@ export default async function Stats() {
           </p>
         </div>
 
-        <dl className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-[#e4eef7] rounded-2xl overflow-hidden border border-[#e4eef7]">
+        <dl
+          className={`grid ${cols} gap-px bg-[#e4eef7] rounded-2xl overflow-hidden border border-[#e4eef7]`}
+        >
           {items.map((s) => (
             <div
               key={s.label}
