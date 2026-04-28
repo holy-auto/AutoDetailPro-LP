@@ -2,29 +2,53 @@
 
 import { useState } from "react";
 
+type Status = "idle" | "loading" | "success" | "duplicated" | "error";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function CTA() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<Status>("idle");
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    const value = email.trim();
+    if (!value) return;
+    if (!EMAIL_RE.test(value)) {
+      setStatus("error");
+      setErrorMessage("有効なメールアドレスを入力してください。");
+      return;
+    }
 
     setStatus("loading");
+    setErrorMessage("");
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: value }),
       });
+      const data = (await res.json().catch(() => null)) as
+        | { message?: string; error?: string; duplicated?: boolean }
+        | null;
+
       if (res.ok) {
-        setStatus("success");
+        setStatus(data?.duplicated ? "duplicated" : "success");
         setEmail("");
-      } else {
-        setStatus("error");
+        return;
       }
+
+      setStatus("error");
+      setErrorMessage(
+        data?.error ??
+          (res.status === 429
+            ? "リクエストが多すぎます。しばらくしてから再度お試しください。"
+            : "登録に失敗しました。時間をおいて再度お試しください。"),
+      );
     } catch {
       setStatus("error");
+      setErrorMessage("ネットワークエラーが発生しました。");
     }
   };
 
@@ -55,13 +79,23 @@ export default function CTA() {
             <form
               onSubmit={handleSubmit}
               className="flex flex-col sm:flex-row gap-3 max-w-lg mb-4"
+              noValidate
             >
+              <label htmlFor="waitlist-email" className="sr-only">
+                メールアドレス
+              </label>
               <input
+                id="waitlist-email"
                 type="email"
+                inputMode="email"
+                autoComplete="email"
                 placeholder="メールアドレスを入力"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                aria-invalid={status === "error"}
+                aria-describedby="waitlist-status"
+                maxLength={254}
                 className="flex-1 px-5 py-4 text-[#0a0a0a] placeholder-[#0a0a0a]/40 bg-white border-2 border-[#0a0a0a] focus:outline-none focus:ring-2 focus:ring-[#0a0a0a] font-bold"
               />
               <button
@@ -73,38 +107,51 @@ export default function CTA() {
               </button>
             </form>
 
-            {status === "success" && (
-              <p className="text-[#0a0a0a] text-sm font-bold">登録ありがとうございます！リリース時にお知らせします。</p>
-            )}
-            {status === "error" && (
-              <p className="text-red-700 text-sm font-bold">エラーが発生しました。もう一度お試しください。</p>
-            )}
+            <p id="waitlist-status" role="status" aria-live="polite" className="min-h-[1.25rem]">
+              {status === "success" && (
+                <span className="text-[#0a0a0a] text-sm font-bold">
+                  登録ありがとうございます！リリース時にお知らせします。
+                </span>
+              )}
+              {status === "duplicated" && (
+                <span className="text-[#0a0a0a] text-sm font-bold">
+                  既にご登録済みです。リリースまでお待ちください。
+                </span>
+              )}
+              {status === "error" && (
+                <span className="text-red-700 text-sm font-bold">{errorMessage}</span>
+              )}
+            </p>
+
+            <p className="text-xs text-[#0a0a0a]/70 mt-2">
+              送信により
+              <a href="/privacy" className="underline font-bold hover:text-[#0a0a0a]">
+                プライバシーポリシー
+              </a>
+              に同意したものとみなします。
+            </p>
 
             <div className="flex flex-wrap gap-3 mt-10">
-              <a
-                href="#"
-                className="inline-flex items-center gap-3 bg-[#0a0a0a] text-white px-6 py-3.5 hover:bg-[#1a1a1a] transition-colors"
-              >
-                <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-                </svg>
-                <div className="text-left">
-                  <p className="text-[10px] text-white/60 font-bold leading-tight">Download on the</p>
-                  <p className="text-base font-black leading-tight">App Store</p>
-                </div>
-              </a>
-              <a
-                href="#"
-                className="inline-flex items-center gap-3 bg-[#0a0a0a] text-white px-6 py-3.5 hover:bg-[#1a1a1a] transition-colors"
-              >
-                <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-1.4l2.585 1.497a1 1 0 010 1.732l-2.585 1.497-2.537-2.537 2.537-2.19zM5.864 2.658L16.8 8.99l-2.302 2.302-8.634-8.634z" />
-                </svg>
-                <div className="text-left">
-                  <p className="text-[10px] text-white/60 font-bold leading-tight">GET IT ON</p>
-                  <p className="text-base font-black leading-tight">Google Play</p>
-                </div>
-              </a>
+              <StoreButton
+                href={process.env.NEXT_PUBLIC_APP_STORE_URL}
+                label="App Store"
+                caption="Download on the"
+                icon={
+                  <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+                  </svg>
+                }
+              />
+              <StoreButton
+                href={process.env.NEXT_PUBLIC_PLAY_STORE_URL}
+                label="Google Play"
+                caption="GET IT ON"
+                icon={
+                  <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-1.4l2.585 1.497a1 1 0 010 1.732l-2.585 1.497-2.537-2.537 2.537-2.19zM5.864 2.658L16.8 8.99l-2.302 2.302-8.634-8.634z" />
+                  </svg>
+                }
+              />
             </div>
           </div>
 
@@ -121,5 +168,52 @@ export default function CTA() {
         </div>
       </div>
     </section>
+  );
+}
+
+function StoreButton({
+  href,
+  label,
+  caption,
+  icon,
+}: {
+  href: string | undefined;
+  label: string;
+  caption: string;
+  icon: React.ReactNode;
+}) {
+  const enabled = Boolean(href);
+  const content = (
+    <>
+      {icon}
+      <div className="text-left">
+        <p className="text-[10px] text-white/60 font-bold leading-tight">
+          {enabled ? caption : "COMING SOON"}
+        </p>
+        <p className="text-base font-black leading-tight">{label}</p>
+      </div>
+    </>
+  );
+
+  if (!enabled) {
+    return (
+      <span
+        aria-disabled="true"
+        className="inline-flex items-center gap-3 bg-[#0a0a0a] text-white/70 px-6 py-3.5 cursor-not-allowed opacity-70"
+      >
+        {content}
+      </span>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-3 bg-[#0a0a0a] text-white px-6 py-3.5 hover:bg-[#1a1a1a] transition-colors"
+    >
+      {content}
+    </a>
   );
 }

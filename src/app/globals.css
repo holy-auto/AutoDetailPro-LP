@@ -58,6 +58,15 @@ html {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 .diagonal-stripe {
   background-image: repeating-linear-gradient(
     -45deg,

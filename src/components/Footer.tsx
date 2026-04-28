@@ -36,22 +36,10 @@ export default function Footer() {
               SERVICE
             </h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">外装洗車</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">内装クリーニング</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">コーティング</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">フルディテイル</a></li>
-            </ul>
-          </div>
-
-          <div className="lg:col-span-2">
-            <h4 className="text-[#ffd900] font-black text-xs tracking-widest uppercase mb-5">
-              COMPANY
-            </h4>
-            <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">会社概要</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">採用情報</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">プレス</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">お問い合わせ</a></li>
+              <li><a href="#services" className="text-white/70 hover:text-[#ffd900] transition-colors">外装洗車</a></li>
+              <li><a href="#services" className="text-white/70 hover:text-[#ffd900] transition-colors">内装クリーニング</a></li>
+              <li><a href="#services" className="text-white/70 hover:text-[#ffd900] transition-colors">コーティング</a></li>
+              <li><a href="#services" className="text-white/70 hover:text-[#ffd900] transition-colors">フルディテイル</a></li>
             </ul>
           </div>
 
@@ -60,20 +48,20 @@ export default function Footer() {
               SUPPORT
             </h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">よくあるご質問</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">対応エリア</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">プロ募集</a></li>
+              <li><a href="#how-it-works" className="text-white/70 hover:text-[#ffd900] transition-colors">使い方</a></li>
+              <li><a href="#features" className="text-white/70 hover:text-[#ffd900] transition-colors">特徴</a></li>
+              <li><a href="#testimonials" className="text-white/70 hover:text-[#ffd900] transition-colors">お客様の声</a></li>
             </ul>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-4">
             <h4 className="text-[#ffd900] font-black text-xs tracking-widest uppercase mb-5">
               LEGAL
             </h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">利用規約</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">プライバシーポリシー</a></li>
-              <li><a href="#" className="text-white/70 hover:text-[#ffd900] transition-colors">特定商取引法</a></li>
+              <li><a href="/terms" className="text-white/70 hover:text-[#ffd900] transition-colors">利用規約</a></li>
+              <li><a href="/privacy" className="text-white/70 hover:text-[#ffd900] transition-colors">プライバシーポリシー</a></li>
+              <li><a href="/tokushoho" className="text-white/70 hover:text-[#ffd900] transition-colors">特定商取引法に基づく表記</a></li>
             </ul>
           </div>
         </div>

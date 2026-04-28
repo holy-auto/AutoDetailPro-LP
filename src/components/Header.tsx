@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export default function Header() {
@@ -9,7 +10,7 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-b border-black/10">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          <a href="#" className="flex items-center gap-2">
+          <Link href="/" aria-label="Auto Detail Pro ホーム" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-[#0a0a0a] flex items-center justify-center">
               <span className="text-[#ffd900] font-black text-lg leading-none tracking-tighter">
                 ADP
@@ -18,7 +19,7 @@ export default function Header() {
             <span className="text-base font-black text-[#0a0a0a] tracking-tight hidden sm:inline">
               Auto Detail Pro
             </span>
-          </a>
+          </Link>
 
           <nav className="hidden md:flex items-center gap-8">
             <a
