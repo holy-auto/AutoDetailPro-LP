@@ -166,7 +166,7 @@ CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_id UUID NOT NULL REFERENCES profiles(id),
   pro_id UUID REFERENCES profiles(id),
-  menu_id UUID REFERENCES menus(id),
+  menu_ids UUID[] NOT NULL DEFAULT '{}',
   category_id TEXT REFERENCES service_categories(id),
 
   -- Status
@@ -174,13 +174,16 @@ CREATE TABLE orders (
 
   -- Payment
   payment_method payment_method NOT NULL,
-  amount INT NOT NULL CHECK (amount > 0),
+  amount INT NOT NULL CHECK (amount > 0),                 -- 基本料金（メニュー合計）
+  customer_fee INT NOT NULL DEFAULT 0,                    -- お客様手数料（5%）
+  customer_total INT NOT NULL DEFAULT 0,                  -- お客様支払い総額
+  pro_fee INT NOT NULL DEFAULT 0,                         -- プロ手数料（5%）
   stripe_payment_intent_id TEXT,
 
   -- Location
-  customer_latitude DOUBLE PRECISION,
-  customer_longitude DOUBLE PRECISION,
-  customer_address TEXT,
+  location_lat DOUBLE PRECISION,
+  location_lng DOUBLE PRECISION,
+  location_address TEXT,
   matching_radius_km INT DEFAULT 15,
 
   -- Confirmations
@@ -199,6 +202,7 @@ CREATE TABLE orders (
 
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
   payment_authorized_at TIMESTAMPTZ,
   requested_at TIMESTAMPTZ,
   accepted_at TIMESTAMPTZ,
