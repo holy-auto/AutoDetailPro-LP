@@ -2,7 +2,26 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
 import { supabase, isSupabaseConfigured } from './supabase';
+
+function getDiagnostics() {
+  const bundleId =
+    Constants.expoConfig?.ios?.bundleIdentifier ??
+    (Constants as unknown as { manifest2?: { extra?: { expoClient?: { ios?: { bundleIdentifier?: string } } } } })
+      .manifest2?.extra?.expoClient?.ios?.bundleIdentifier ??
+    'unknown';
+  const supaUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+  const supaHost = (() => {
+    try {
+      return supaUrl ? new URL(supaUrl).host : 'not-set';
+    } catch {
+      return 'invalid-url';
+    }
+  })();
+  const isExpoGo = Constants.appOwnership === 'expo';
+  return { bundleId, supaHost, isExpoGo };
+}
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -25,6 +44,19 @@ function ensureConfigured() {
 // Apple Sign In
 export async function signInWithApple() {
   ensureConfigured();
+
+  const diag = getDiagnostics();
+  if (diag.isExpoGo) {
+    throw new AuthError(
+      [
+        'Expo Go では Apple サインインを使えません。',
+        'EAS development build または production build で実行してください。',
+        '',
+        '(Expo Go の bundle id は host.exp.Exponent のため、Supabase が拒否します)',
+      ].join('\n'),
+      'EXPO_GO_NOT_SUPPORTED',
+    );
+  }
 
   const rawNonce = Crypto.randomUUID();
   const hashedNonce = await Crypto.digestStringAsync(
@@ -56,51 +88,55 @@ export async function signInWithApple() {
         message: error.message,
         status: (error as { status?: number }).status,
         name: error.name,
+        diag,
       });
     }
-    throw new AuthError(translateAppleError(error.message), 'SUPABASE_SIGNIN_FAILED');
+    throw new AuthError(translateAppleError(error.message, diag), 'SUPABASE_SIGNIN_FAILED');
   }
   return data;
 }
 
-function translateAppleError(message: string): string {
+function translateAppleError(
+  message: string,
+  diag: { bundleId: string; supaHost: string; isExpoGo: boolean },
+): string {
   const m = message.toLowerCase();
+  const tail = `\n\n[診断]\n  bundle id: ${diag.bundleId}\n  supabase: ${diag.supaHost}\n(原因: ${message})`;
+
   // Supabase が bundle ID を Apple provider の Authorized Client IDs に
   // 登録していないケース。最頻出。
   if (m.includes('audience') || m.includes('client_id') || m.includes('aud')) {
     return [
       'Apple identity token の audience が拒否されました。',
       '',
-      'Supabase Dashboard > Authentication > Providers > Apple の',
-      '"Authorized Client IDs" に「com.mobilewash.app」を追加してください。',
-      '',
-      `(原因: ${message})`,
+      `アプリの bundle id (${diag.bundleId}) を Supabase の`,
+      `${diag.supaHost} プロジェクトの`,
+      'Authentication > Providers > Apple > Authorized Client IDs',
+      'に登録してください。',
+      tail,
     ].join('\n');
   }
   if (m.includes('provider is not enabled') || m.includes('not enabled')) {
     return [
-      'Supabase 側で Apple プロバイダが有効化されていません。',
-      'Supabase Dashboard > Authentication > Providers > Apple を有効にしてください。',
-      '',
-      `(原因: ${message})`,
+      `Supabase (${diag.supaHost}) 側で Apple プロバイダが有効化されていません。`,
+      'Authentication > Providers > Apple を有効にしてください。',
+      tail,
     ].join('\n');
   }
   if (m.includes('secret') || m.includes('jwt') || m.includes('signing')) {
     return [
       'Apple secret key が無効か期限切れです (6ヶ月で失効)。',
       'Apple Developer の .p8 から JWT を再生成し、Supabase Dashboard に登録してください。',
-      '',
-      `(原因: ${message})`,
+      tail,
     ].join('\n');
   }
   if (m.includes('nonce')) {
     return [
       'Apple nonce 検証に失敗しました。アプリを再起動して再度お試しください。',
-      '',
-      `(原因: ${message})`,
+      tail,
     ].join('\n');
   }
-  return `Apple サインインで Supabase が認証を拒否しました。\n\n(原因: ${message})`;
+  return `Apple サインインで Supabase が認証を拒否しました。${tail}`;
 }
 
 // Google Sign In (PKCE flow)
