@@ -2,21 +2,57 @@
 
 import { useState } from "react";
 
-const areas = [
-  { value: "tokyo", label: "東京都" },
-  { value: "kanagawa", label: "神奈川県" },
-  { value: "saitama", label: "埼玉県" },
-  { value: "chiba", label: "千葉県" },
-  { value: "osaka", label: "大阪府" },
-  { value: "kyoto", label: "京都府" },
-  { value: "hyogo", label: "兵庫県" },
-  { value: "aichi", label: "愛知県" },
-  { value: "shizuoka", label: "静岡県" },
-  { value: "fukuoka", label: "福岡県" },
-  { value: "hokkaido", label: "北海道" },
-  { value: "miyagi", label: "宮城県" },
-  { value: "other", label: "その他" },
+const areas: { value: string; label: string; group: string }[] = [
+  { value: "hokkaido", label: "北海道", group: "北海道・東北" },
+  { value: "aomori", label: "青森県", group: "北海道・東北" },
+  { value: "iwate", label: "岩手県", group: "北海道・東北" },
+  { value: "miyagi", label: "宮城県", group: "北海道・東北" },
+  { value: "akita", label: "秋田県", group: "北海道・東北" },
+  { value: "yamagata", label: "山形県", group: "北海道・東北" },
+  { value: "fukushima", label: "福島県", group: "北海道・東北" },
+  { value: "ibaraki", label: "茨城県", group: "関東" },
+  { value: "tochigi", label: "栃木県", group: "関東" },
+  { value: "gunma", label: "群馬県", group: "関東" },
+  { value: "saitama", label: "埼玉県", group: "関東" },
+  { value: "chiba", label: "千葉県", group: "関東" },
+  { value: "tokyo", label: "東京都", group: "関東" },
+  { value: "kanagawa", label: "神奈川県", group: "関東" },
+  { value: "niigata", label: "新潟県", group: "中部" },
+  { value: "toyama", label: "富山県", group: "中部" },
+  { value: "ishikawa", label: "石川県", group: "中部" },
+  { value: "fukui", label: "福井県", group: "中部" },
+  { value: "yamanashi", label: "山梨県", group: "中部" },
+  { value: "nagano", label: "長野県", group: "中部" },
+  { value: "gifu", label: "岐阜県", group: "中部" },
+  { value: "shizuoka", label: "静岡県", group: "中部" },
+  { value: "aichi", label: "愛知県", group: "中部" },
+  { value: "mie", label: "三重県", group: "近畿" },
+  { value: "shiga", label: "滋賀県", group: "近畿" },
+  { value: "kyoto", label: "京都府", group: "近畿" },
+  { value: "osaka", label: "大阪府", group: "近畿" },
+  { value: "hyogo", label: "兵庫県", group: "近畿" },
+  { value: "nara", label: "奈良県", group: "近畿" },
+  { value: "wakayama", label: "和歌山県", group: "近畿" },
+  { value: "tottori", label: "鳥取県", group: "中国" },
+  { value: "shimane", label: "島根県", group: "中国" },
+  { value: "okayama", label: "岡山県", group: "中国" },
+  { value: "hiroshima", label: "広島県", group: "中国" },
+  { value: "yamaguchi", label: "山口県", group: "中国" },
+  { value: "tokushima", label: "徳島県", group: "四国" },
+  { value: "kagawa", label: "香川県", group: "四国" },
+  { value: "ehime", label: "愛媛県", group: "四国" },
+  { value: "kochi", label: "高知県", group: "四国" },
+  { value: "fukuoka", label: "福岡県", group: "九州・沖縄" },
+  { value: "saga", label: "佐賀県", group: "九州・沖縄" },
+  { value: "nagasaki", label: "長崎県", group: "九州・沖縄" },
+  { value: "kumamoto", label: "熊本県", group: "九州・沖縄" },
+  { value: "oita", label: "大分県", group: "九州・沖縄" },
+  { value: "miyazaki", label: "宮崎県", group: "九州・沖縄" },
+  { value: "kagoshima", label: "鹿児島県", group: "九州・沖縄" },
+  { value: "okinawa", label: "沖縄県", group: "九州・沖縄" },
 ];
+
+const areaGroups = Array.from(new Set(areas.map((a) => a.group)));
 
 const experienceOptions = [
   { value: "beginner", label: "未経験 / 学習中" },
@@ -107,7 +143,7 @@ export default function ProSignupForm() {
           認定プロ第一期生 事前登録
         </h3>
         <p className="text-[12px] text-[#5a7090] leading-relaxed">
-          ローンチ時に優先案内・研修招待・初期報酬アップを行います。
+          全国47都道府県から事前登録を受付中。ローンチ時に優先案内・研修招待・初期報酬アップを行います。
           下記フォームよりお気軽にお申し込みください。
         </p>
       </div>
@@ -170,11 +206,17 @@ export default function ProSignupForm() {
             onChange={(e) => setArea(e.target.value)}
             className="w-full px-4 py-2.5 rounded-lg text-[14px] text-[#0a2540] bg-white border border-[#e4eef7] focus:outline-none focus:ring-2 focus:ring-[#0099e6]/30 focus:border-[#0099e6]"
           >
-            <option value="">選択してください</option>
-            {areas.map((a) => (
-              <option key={a.value} value={a.value}>
-                {a.label}
-              </option>
+            <option value="">選択してください（全国対応）</option>
+            {areaGroups.map((g) => (
+              <optgroup key={g} label={g}>
+                {areas
+                  .filter((a) => a.group === g)
+                  .map((a) => (
+                    <option key={a.value} value={a.value}>
+                      {a.label}
+                    </option>
+                  ))}
+              </optgroup>
             ))}
           </select>
         </div>

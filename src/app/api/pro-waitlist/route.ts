@@ -2,19 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 const ALLOWED_AREAS = [
-  "tokyo",
-  "kanagawa",
-  "saitama",
-  "chiba",
-  "osaka",
-  "kyoto",
-  "hyogo",
-  "aichi",
-  "shizuoka",
-  "fukuoka",
-  "hokkaido",
-  "miyagi",
-  "other",
+  "hokkaido", "aomori", "iwate", "miyagi", "akita", "yamagata", "fukushima",
+  "ibaraki", "tochigi", "gunma", "saitama", "chiba", "tokyo", "kanagawa",
+  "niigata", "toyama", "ishikawa", "fukui", "yamanashi", "nagano", "gifu",
+  "shizuoka", "aichi", "mie", "shiga", "kyoto", "osaka", "hyogo", "nara",
+  "wakayama", "tottori", "shimane", "okayama", "hiroshima", "yamaguchi",
+  "tokushima", "kagawa", "ehime", "kochi", "fukuoka", "saga", "nagasaki",
+  "kumamoto", "oita", "miyazaki", "kagoshima", "okinawa",
 ];
 
 const ALLOWED_EXPERIENCE = [

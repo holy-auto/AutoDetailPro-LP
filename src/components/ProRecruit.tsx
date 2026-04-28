@@ -48,7 +48,7 @@ export default function ProRecruit() {
               <p className="text-[15px] text-white/80 mb-8 leading-relaxed max-w-xl">
                 ディテイリングのスキルを、もっと自由に。もっと稼げる場所へ。
                 MobileWash は、出張型カーケアの新しい働き方を提案します。
-                正式ローンチに向けて、認定プロ第一期生を募集中です。
+                <strong className="text-[#00b4ff]">全国47都道府県</strong>から認定プロ第一期生を募集中です。
               </p>
 
               <ul className="grid sm:grid-cols-2 gap-3 mb-8">

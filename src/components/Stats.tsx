@@ -5,14 +5,6 @@ export const revalidate = 120;
 
 export default async function Stats() {
   const stats = await getSiteStats();
-  const updated = new Date(stats.fetchedAt).toLocaleString("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
   type StatItem = {
     label: string;
@@ -115,13 +107,6 @@ export default async function Stats() {
             </div>
           ))}
         </dl>
-
-        <p className="text-center text-[11px] text-[#8ba0ba] mt-6">
-          ※ 事前登録者数・認定プロ登録数はSupabaseから取得しているリアルタイムカウンターです。
-          {stats.fetchedAt !== new Date(0).toISOString() && (
-            <span className="ml-1">最終更新: {updated}</span>
-          )}
-        </p>
       </div>
     </section>
   );
