@@ -158,23 +158,139 @@ export function faqLd(items: { q: string; a: string }[]): StructuredData {
   };
 }
 
-export function breadcrumbLd(): StructuredData {
+export function breadcrumbLd(
+  items?: { name: string; url: string }[],
+): StructuredData {
+  const list = items ?? [{ name: "ホーム", url: SITE.url }];
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "ホーム",
-        item: SITE.url,
-      },
+    itemListElement: list.map((it, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: it.name,
+      item: it.url,
+    })),
+  };
+}
+
+export function localBusinessLd(): StructuredData {
+  return {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "@id": `${SITE.url}/#localbusiness`,
+    name: `${SITE.name}（出張洗車・出張コーティング）`,
+    image: `${SITE.url}${SITE.ogImage}`,
+    url: SITE.url,
+    description: SITE.description,
+    priceRange: "¥2,980〜¥49,800",
+    address: {
+      "@type": "PostalAddress",
+      addressCountry: SITE.contact.addressCountry,
+      addressLocality: SITE.contact.addressLocality,
+      addressRegion: SITE.contact.addressRegion,
+    },
+    areaServed: [
+      "東京都",
+      "神奈川県",
+      "埼玉県",
+      "千葉県",
+      "大阪府",
+      "京都府",
+      "兵庫県",
+      "愛知県",
+    ].map((name) => ({ "@type": "AdministrativeArea", name })),
+    serviceType: [
+      "出張洗車",
+      "出張ガラスコーティング",
+      "出張内装クリーニング",
+      "出張ポリッシュ磨き",
+      "出張フルディテイリング",
+      "出張エンジンルーム洗浄",
     ],
+    paymentAccepted: ["Credit Card", "Apple Pay", "Google Pay", "PayPay"],
+    openingHoursSpecification: {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ],
+      opens: "08:00",
+      closes: "20:00",
+    },
+  };
+}
+
+type ArticleInput = {
+  title: string;
+  description: string;
+  url: string;
+  datePublished: string;
+  dateModified?: string;
+  image?: string;
+};
+
+export function articleLd(input: ArticleInput): StructuredData {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: input.title,
+    description: input.description,
+    image: input.image ?? `${SITE.url}${SITE.ogImage}`,
+    datePublished: input.datePublished,
+    dateModified: input.dateModified ?? input.datePublished,
+    author: { "@type": "Organization", name: SITE.name, url: SITE.url },
+    publisher: { "@id": `${SITE.url}/#organization` },
+    mainEntityOfPage: { "@type": "WebPage", "@id": input.url },
+  };
+}
+
+type PageMetaInput = {
+  title: string;
+  description: string;
+  path: string;
+  ogImage?: string;
+};
+
+export function buildPageMetadata(input: PageMetaInput): Metadata {
+  const fullUrl = `${SITE.url}${input.path}`;
+  return {
+    title: input.title,
+    description: input.description,
+    alternates: { canonical: fullUrl },
+    openGraph: {
+      type: "article",
+      locale: SITE.locale,
+      url: fullUrl,
+      siteName: SITE.name,
+      title: input.title,
+      description: input.description,
+      images: [
+        {
+          url: input.ogImage ?? SITE.ogImage,
+          width: 1200,
+          height: 630,
+          alt: input.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      site: SITE.twitter,
+      title: input.title,
+      description: input.description,
+      images: [input.ogImage ?? SITE.ogImage],
+    },
   };
 }
 
 export function defaultMetadata(): Metadata {
-  const title = `${SITE.name} | 出張洗車・出張コーティングのプロを呼べるアプリ`;
+  const title = `出張洗車・出張コーティングのプロを呼べるアプリ | ${SITE.name}`;
   return {
     metadataBase: new URL(SITE.url),
     title: {

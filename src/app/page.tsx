@@ -25,6 +25,7 @@ import {
   mobileApplicationLd,
   faqLd,
   breadcrumbLd,
+  localBusinessLd,
 } from "@/lib/seo";
 
 export default function Home() {
@@ -36,6 +37,7 @@ export default function Home() {
           organizationLd(),
           websiteLd(),
           serviceLd(),
+          localBusinessLd(),
           mobileApplicationLd(),
           faqLd(faqs),
           breadcrumbLd(),

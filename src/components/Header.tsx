@@ -3,13 +3,12 @@
 import { useState } from "react";
 
 const mainNav = [
-  { href: "#features", label: "特徴" },
-  { href: "#services", label: "サービス" },
-  { href: "#plans", label: "料金プラン" },
-  { href: "#how-it-works", label: "ご利用の流れ" },
-  { href: "#areas", label: "対応エリア" },
-  { href: "#stories", label: "導入事例" },
-  { href: "#faq", label: "よくある質問" },
+  { href: "/#services", label: "サービス" },
+  { href: "/#plans", label: "料金プラン" },
+  { href: "/#how-it-works", label: "ご利用の流れ" },
+  { href: "/areas", label: "対応エリア" },
+  { href: "/guide/mobile-wash", label: "出張洗車ガイド" },
+  { href: "/#faq", label: "よくある質問" },
 ];
 
 const utilityNav = [

@@ -20,21 +20,22 @@ export default async function Hero() {
           <div className="lg:col-span-6">
             <span className="tag-pill mb-6">
               <span className="w-1.5 h-1.5 bg-[#0099e6] rounded-full" />
-              {stats.launchTarget} 正式ローンチ予定 / 先行登録受付中
+              出張洗車アプリ / {stats.launchTarget} 正式ローンチ予定
             </span>
             <h1
               id="hero-heading"
               className="heading-tight text-[40px] sm:text-5xl lg:text-[58px] xl:text-[64px] font-bold text-[#0a2540] mb-6"
             >
-              洗車を、
+              <span className="text-[#0099e6]">出張洗車</span>を、
               <br />
-              <span className="text-[#0099e6]">呼ぶ時代</span>
-              へ。
+              呼ぶ時代へ。
             </h1>
             <p className="text-[15px] sm:text-base lg:text-lg text-[#5a7090] leading-relaxed mb-10 max-w-xl">
-              出張洗車・出張コーティングのプロを、スマホひとつで呼べるアプリ。
-              GPSで近くの認定プロを自動マッチング。最短5分で駐車場まで出張。
-              現在、認定プロ募集中・先行ユーザー登録を受け付けています。
+              MobileWash は、<strong className="text-[#0a2540] font-bold">出張洗車・出張コーティング</strong>
+              のプロをスマホひとつで呼べるカーディテイリングアプリ。
+              GPSで近くの認定プロを自動マッチングし、ご自宅やマンションの駐車場へ
+              <strong className="text-[#0a2540] font-bold">最短5分で出張</strong>します。
+              洗車に行く時間がない方、駐車場で水が使えない方も、出張プロが解決します。
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 mb-10">
