@@ -12,7 +12,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mobilewash.app",
-      "buildNumber": "1",
+      "buildNumber": "10",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "近くのプロを表示するために位置情報を使用します",
