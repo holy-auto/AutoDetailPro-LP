@@ -12,12 +12,16 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mobilewash.app",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "近くのプロを表示するために位置情報を使用します",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "出張中の位置情報共有に使用します",
         "NSUserTrackingUsageDescription": "パーソナライズされた広告を表示するために使用します",
+        "NSCameraUsageDescription": "プロフィール写真の撮影、施工写真の記録、決済時のカード読み取りに使用します",
+        "NSPhotoLibraryUsageDescription": "プロフィール写真や施工写真を選択するためにフォトライブラリにアクセスします",
+        "NSPhotoLibraryAddUsageDescription": "施工後の写真をフォトライブラリに保存するために使用します",
+        "NSMicrophoneUsageDescription": "チャット時の音声メッセージや動画撮影でマイクを使用します",
         "ITSAppUsesNonExemptEncryption": false,
         "SKAdNetworkItems": [
           { "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork" }
