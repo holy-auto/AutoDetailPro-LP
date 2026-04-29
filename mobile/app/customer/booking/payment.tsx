@@ -65,13 +65,18 @@ export default function PaymentScreen() {
           customerEmail: user.email ?? '',
         });
 
+        if (!pi.clientSecret) {
+          Alert.alert('エラー', '決済の初期化に失敗しました。再度お試しください。');
+          return;
+        }
+
         const { error: initError } = await initPaymentSheet({
           merchantDisplayName: 'Mobile Wash',
-          paymentIntentClientSecret: pi.clientSecret!,
+          paymentIntentClientSecret: pi.clientSecret,
           allowsDelayedPaymentMethods: false,
         });
         if (initError) {
-          Alert.alert('エラー', initError.message);
+          Alert.alert('決済エラー', initError.message);
           return;
         }
 
@@ -100,8 +105,8 @@ export default function PaymentScreen() {
           ...(paymentIntentId ? { paymentIntentId } : {}),
         },
       });
-    } catch {
-      Alert.alert('エラー', '処理に失敗しました。再度お試しください。');
+    } catch (e) {
+      Alert.alert('エラー', (e as Error)?.message ?? '処理に失敗しました。再度お試しください。');
     } finally {
       setProcessing(false);
     }
