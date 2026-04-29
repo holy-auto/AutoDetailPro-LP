@@ -18,6 +18,7 @@
         "NSLocationWhenInUseUsageDescription": "近くのプロを表示するために位置情報を使用します",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "出張中の位置情報共有に使用します",
         "NSUserTrackingUsageDescription": "パーソナライズされた広告を表示するために使用します",
+        "ITSAppUsesNonExemptEncryption": false,
         "SKAdNetworkItems": [
           { "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork" }
         ]
@@ -44,6 +45,12 @@
       "expo-notifications",
       "./plugins/with-splashscreen-logo.js",
       "./plugins/with-android-emulator-support.js"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b9ac78a6-8899-44d3-a725-59af14bfae88"
+      }
+    }
   }
 }
