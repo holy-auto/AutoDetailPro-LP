@@ -11,8 +11,13 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useStripe } from '@stripe/stripe-react-native';
+import * as Location from 'expo-location';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/colors';
 import { CANCELLATION, PAYMENT_METHOD, type PaymentMethod } from '@/constants/business-rules';
+import { createPaymentIntent } from '@/lib/stripe';
+import { createOrder, authorizePayment } from '@/lib/orders';
+import { useAuth } from '../../_layout';
 
 export default function PaymentScreen() {
   const router = useRouter();
@@ -24,15 +29,70 @@ export default function PaymentScreen() {
   }>();
   const totalPrice = parseInt(params.totalPrice ?? '0', 10);
 
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PAYMENT_METHOD.ONLINE);
   const [processing, setProcessing] = useState(false);
 
   const handleConfirmOrder = async () => {
+    if (!user) {
+      Alert.alert('エラー', 'ログインが必要です');
+      return;
+    }
     setProcessing(true);
     try {
-      // In production: createPaymentIntent() → confirm with Stripe SDK
-      // For now simulate
-      await new Promise((r) => setTimeout(r, 1500));
+      const loc = await Location.getLastKnownPositionAsync().catch(() => null);
+      const location = {
+        lat: loc?.coords.latitude ?? 35.6762,
+        lng: loc?.coords.longitude ?? 139.6503,
+      };
+
+      const menuIds = params.menuIds ? params.menuIds.split(',').filter(Boolean) : [];
+      const orderResult = await createOrder(user.id, menuIds, paymentMethod, totalPrice, location);
+      if (!orderResult.success) {
+        Alert.alert('エラー', orderResult.error);
+        return;
+      }
+      const { orderId } = orderResult.data;
+
+      let paymentIntentId: string | undefined;
+
+      if (paymentMethod === PAYMENT_METHOD.ONLINE) {
+        const pi = await createPaymentIntent({
+          orderId,
+          amount: totalPrice,
+          paymentMethod,
+          customerEmail: user.email ?? '',
+        });
+
+        if (!pi.clientSecret) {
+          Alert.alert('エラー', '決済の初期化に失敗しました。再度お試しください。');
+          return;
+        }
+
+        const { error: initError } = await initPaymentSheet({
+          merchantDisplayName: 'Mobile Wash',
+          paymentIntentClientSecret: pi.clientSecret,
+          allowsDelayedPaymentMethods: false,
+        });
+        if (initError) {
+          Alert.alert('決済エラー', initError.message);
+          return;
+        }
+
+        const { error: presentError } = await presentPaymentSheet();
+        if (presentError) {
+          if (presentError.code !== 'Canceled') {
+            Alert.alert('決済エラー', presentError.message);
+          }
+          return;
+        }
+
+        paymentIntentId = pi.paymentIntentId;
+        await authorizePayment(orderId, paymentIntentId);
+      } else {
+        await authorizePayment(orderId);
+      }
 
       router.push({
         pathname: '/customer/booking/matching',
@@ -41,11 +101,12 @@ export default function PaymentScreen() {
           proName: params.proName,
           totalPrice: params.totalPrice,
           paymentMethod,
-          orderId: 'mock_order_' + Date.now(),
+          orderId,
+          ...(paymentIntentId ? { paymentIntentId } : {}),
         },
       });
-    } catch {
-      Alert.alert('エラー', '決済に失敗しました。再度お試しください。');
+    } catch (e) {
+      Alert.alert('エラー', (e as Error)?.message ?? '処理に失敗しました。再度お試しください。');
     } finally {
       setProcessing(false);
     }

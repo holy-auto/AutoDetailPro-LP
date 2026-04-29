@@ -14,6 +14,7 @@ import { showInterstitial, preloadInterstitial } from '@/lib/admob';
 import AdBanner from '@/components/AdBanner';
 import RewardedAdButton from '@/components/RewardedAdButton';
 import { saveCoupon } from '@/lib/coupons';
+import { shouldTriggerAudit, createAuditRequest } from '@/lib/quality-audit';
 import { useAuth } from '../../_layout';
 
 export default function CompleteScreen() {
@@ -23,11 +24,20 @@ export default function CompleteScreen() {
     proName: string;
     totalPrice: string;
     orderId: string;
+    proId: string;
     autoCompleted: string;
   }>();
 
   const totalPrice = parseInt(params.totalPrice ?? '0', 10);
   const isAutoCompleted = params.autoCompleted === 'true';
+
+  useEffect(() => {
+    if (params.orderId && params.proId && user?.id) {
+      shouldTriggerAudit(params.proId).then((should) => {
+        if (should) createAuditRequest(params.orderId, user.id!, params.proId);
+      });
+    }
+  }, []);
 
   // サービス完了後にインタースティシャル広告を表示
   useEffect(() => {
