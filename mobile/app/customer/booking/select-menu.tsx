@@ -22,10 +22,10 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 // Mock: pro's available menus
 const MOCK_PRO_MENUS = [
-  { id: '1', name: '手洗い洗車', price: 3000, duration: '30分', categoryId: 'exterior' },
-  { id: '2', name: 'プレミアム洗車', price: 5000, duration: '45分', categoryId: 'exterior' },
-  { id: '3', name: 'ガラスコーティング', price: 15000, duration: '120分', categoryId: 'coating' },
-  { id: '4', name: '室内クリーニング', price: 4500, duration: '40分', categoryId: 'interior' },
+  { id: 'a1b2c3d4-0001-0001-0001-000000000001', name: '手洗い洗車', price: 3000, duration: '30分', categoryId: 'exterior' },
+  { id: 'a1b2c3d4-0001-0001-0001-000000000002', name: 'プレミアム洗車', price: 5000, duration: '45分', categoryId: 'exterior' },
+  { id: 'a1b2c3d4-0001-0001-0001-000000000003', name: 'ガラスコーティング', price: 15000, duration: '120分', categoryId: 'coating' },
+  { id: 'a1b2c3d4-0001-0001-0001-000000000004', name: '室内クリーニング', price: 4500, duration: '40分', categoryId: 'interior' },
 ];
 
 export default function SelectMenuScreen() {
