@@ -14,6 +14,30 @@ import {
 // All Stripe API calls happen server-side (Edge Functions).
 // The client calls supabase.functions.invoke() to trigger them.
 
+/**
+ * supabase-js wraps non-2xx responses as FunctionsHttpError with the generic
+ * message "Edge Function returned a non-2xx status code". The real error from
+ * the function lives in `error.context` (a Response). Parse it so the caller
+ * sees the actual reason instead of the wrapper.
+ */
+async function extractFunctionError(error: unknown, fallback: string): Promise<string> {
+  const ctx = (error as { context?: Response } | null)?.context;
+  if (ctx && typeof ctx.text === 'function') {
+    try {
+      const text = await ctx.clone().text();
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed?.error) return String(parsed.error);
+      } catch {
+        if (text) return text;
+      }
+    } catch {
+      // fall through
+    }
+  }
+  return (error as { message?: string })?.message ?? fallback;
+}
+
 // --- Fee Calculation Helpers ---
 
 /** お客様が支払う合計金額（基本料金 + 5%手数料） */
@@ -82,7 +106,10 @@ export async function createPaymentIntent(params: {
     },
   });
 
-  if (error) throw new Error(`Payment creation failed: ${error.message}`);
+  if (error) {
+    const detail = await extractFunctionError(error, 'unknown error');
+    throw new Error(`Payment creation failed: ${detail}`);
+  }
 
   return {
     paymentIntentId: data.payment_intent_id as string,
@@ -109,7 +136,10 @@ export async function capturePayment(params: {
     },
   });
 
-  if (error) throw new Error(`Payment capture failed: ${error.message}`);
+  if (error) {
+    const detail = await extractFunctionError(error, 'unknown error');
+    throw new Error(`Payment capture failed: ${detail}`);
+  }
   return data;
 }
 
@@ -129,7 +159,10 @@ export async function cancelPaymentAuthorization(params: {
     },
   });
 
-  if (error) throw new Error(`Payment cancel failed: ${error.message}`);
+  if (error) {
+    const detail = await extractFunctionError(error, 'unknown error');
+    throw new Error(`Payment cancel failed: ${detail}`);
+  }
   return data;
 }
 
@@ -217,7 +250,10 @@ export async function processRefund(params: {
     },
   });
 
-  if (error) throw new Error(`Refund failed: ${error.message}`);
+  if (error) {
+    const detail = await extractFunctionError(error, 'unknown error');
+    throw new Error(`Refund failed: ${detail}`);
+  }
 
   // Update order
   const newStatus =
@@ -249,6 +285,9 @@ export async function processCashSettlement(params: {
     },
   });
 
-  if (error) throw new Error(`Cash settlement failed: ${error.message}`);
+  if (error) {
+    const detail = await extractFunctionError(error, 'unknown error');
+    throw new Error(`Cash settlement failed: ${detail}`);
+  }
   return data;
 }

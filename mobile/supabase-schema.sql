@@ -177,6 +177,13 @@ CREATE TABLE orders (
   amount INT NOT NULL CHECK (amount > 0),
   stripe_payment_intent_id TEXT,
 
+  -- Fee breakdown (mirrors stripe-connect Edge Function)
+  customer_fee INT DEFAULT 0,
+  customer_total INT DEFAULT 0,
+  pro_fee INT DEFAULT 0,
+  payout_fee INT DEFAULT 0,
+  pro_payout INT DEFAULT 0,
+
   -- Location
   customer_latitude DOUBLE PRECISION,
   customer_longitude DOUBLE PRECISION,
@@ -212,6 +219,13 @@ CREATE TABLE orders (
   dispute_opened_at TIMESTAMPTZ,
   dispute_resolved_at TIMESTAMPTZ
 );
+
+-- Idempotent column adds for existing deployments
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_fee INT DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_total INT DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS pro_fee INT DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payout_fee INT DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS pro_payout INT DEFAULT 0;
 
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Customers can view own orders" ON orders FOR SELECT USING (auth.uid() = customer_id);
