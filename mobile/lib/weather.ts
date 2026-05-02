@@ -76,8 +76,8 @@ export async function shouldSuggestCancel(
 
 /**
  * Get a weather forecast for the next N hours.
- * The Edge Function returns 3-hour interval entries from the OpenWeatherMap
- * forecast endpoint; we filter to the requested window.
+ * The Edge Function returns hourly entries from Open-Meteo;
+ * we filter to the requested window.
  */
 export async function getWeatherForecast(
   lat: number,
