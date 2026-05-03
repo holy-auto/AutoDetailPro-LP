@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ルーティング遅延 体感比較デモ</title>
+<style>
+  body {
+    font-family: -apple-system, "Hiragino Sans", sans-serif;
+    background: #f5f5f7;
+    margin: 0;
+    padding: 24px;
+    color: #1d1d1f;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 24px; }
+
+  .row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .col {
+    flex: 1;
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .col h2 { font-size: 14px; margin: 0 0 4px; color: #555; }
+  .col .latency { font-size: 11px; color: #999; margin-bottom: 12px; }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    background: #0071e3;
+    color: white;
+    cursor: pointer;
+  }
+  button:active { background: #005bb5; }
+  button:disabled { background: #ccc; cursor: not-allowed; }
+
+  .result {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f5f5f7;
+    border-radius: 8px;
+    font-size: 13px;
+    min-height: 60px;
+  }
+  .result .eta { font-size: 22px; font-weight: 700; color: #0071e3; }
+  .result .meta { color: #666; font-size: 11px; margin-top: 4px; }
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #ddd;
+    border-top-color: #0071e3;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .stats {
+    margin-top: 24px;
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .stats h2 { font-size: 14px; margin: 0 0 8px; }
+  .stats table { width: 100%; font-size: 13px; border-collapse: collapse; }
+  .stats td, .stats th { padding: 6px; text-align: left; border-bottom: 1px solid #eee; }
+  .stats th { color: #666; font-weight: 500; }
+  .note {
+    margin-top: 16px;
+    padding: 12px;
+    background: #fff8e1;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #6b5800;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<h1>ルーティング遅延 体感比較デモ</h1>
+<p class="sub">同じ「注文確定 → ETA 表示」のボタンを 2 通りの速度で並べました。両方クリックして違いが分かるか試してください。</p>
+
+<div class="row">
+  <div class="col">
+    <h2>① OSRM 別サーバ構成</h2>
+    <div class="latency">想定レイテンシ: 約 10ms（東京リージョン）</div>
+    <button id="btn-fast" onclick="run('fast')">注文を確定する →</button>
+    <div class="result" id="result-fast">↑ 押すと ETA が表示されます</div>
+  </div>
+
+  <div class="col">
+    <h2>② pgRouting on Supabase 構成</h2>
+    <div class="latency">想定レイテンシ: 約 120ms（東京リージョン）</div>
+    <button id="btn-slow" onclick="run('slow')">注文を確定する →</button>
+    <div class="result" id="result-slow">↑ 押すと ETA が表示されます</div>
+  </div>
+</div>
+
+<div class="stats">
+  <h2>計測ログ</h2>
+  <table id="log">
+    <thead><tr><th>#</th><th>構成</th><th>実測</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="note">
+  <strong>体感のヒント：</strong>
+  ① はクリックと同時に結果が出る感覚、② は「ちょっと待った」感が出ます。<br>
+  人間が「即時」と感じる閾値は 100〜200ms。② の 120ms はギリギリこの境界。<br>
+  ③ Google Maps Platform 構成（外部 API + 認証）だと 200〜400ms、ここは明確に「待った」と感じます。
+</div>
+
+<script>
+  const LATENCIES = { fast: 10, slow: 120 };
+  let count = 0;
+
+  async function run(kind) {
+    const btn = document.getElementById('btn-' + kind);
+    const result = document.getElementById('result-' + kind);
+    btn.disabled = true;
+    result.innerHTML = '<span class="spinner"></span>計算中...';
+
+    const start = performance.now();
+    await new Promise(r => setTimeout(r, LATENCIES[kind]));
+    const elapsed = performance.now() - start;
+
+    // ダミーの ETA
+    const etaMin = 12 + Math.floor(Math.random() * 5);
+    const distance = (4.2 + Math.random() * 2).toFixed(1);
+
+    result.innerHTML = `
+      <div class="eta">${etaMin} 分で到着</div>
+      <div class="meta">距離 ${distance}km / 計算 ${elapsed.toFixed(0)}ms</div>
+    `;
+
+    const tbody = document.querySelector('#log tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${++count}</td><td>${kind === 'fast' ? '① OSRM' : '② pgRouting'}</td><td>${elapsed.toFixed(0)}ms</td>`;
+    tbody.insertBefore(tr, tbody.firstChild);
+
+    btn.disabled = false;
+  }
+</script>
+
+</body>
+</html>
