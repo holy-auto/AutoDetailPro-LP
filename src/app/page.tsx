@@ -10,6 +10,7 @@ import HowItWorks from "@/components/HowItWorks";
 import Areas from "@/components/Areas";
 import Comparison from "@/components/Comparison";
 import Stories from "@/components/Stories";
+import MediaFeatures from "@/components/MediaFeatures";
 import Media from "@/components/Media";
 import FAQ from "@/components/FAQ";
 import ProRecruit from "@/components/ProRecruit";
@@ -56,6 +57,7 @@ export default function Home() {
         <Comparison />
         <Areas />
         <Stories />
+        <MediaFeatures />
         <Media />
         <ProRecruit />
         <FAQ />
